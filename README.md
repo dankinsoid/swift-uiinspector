@@ -68,6 +68,10 @@ The inspector provides several controls:
 - **Refresh**: Update the inspector view
 - **Close**: Dismiss the inspector
 
+## TODO
+
+- **3D Rotation**: The 3D rotation feature is not implemented yet. This will be needed to properly visualize and interact with overlapping views in the hierarchy.
+
 ## License
 
 This package is available under the MIT license.
