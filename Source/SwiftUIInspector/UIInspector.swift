@@ -343,22 +343,22 @@ private extension UIInspector {
 	}
 
 	func drawGrid() {
-		let threshold: CGFloat = 30
+		let threshold: CGFloat = 15
 		for line in gridVViews {
-			let size = min(line.sourceRect.size.width + threshold, container.bounds.width)
+			let size = min(line.sourceRect.size.width, container.bounds.width)
 			line.frame = container.convert(
 				CGRect(x: line.sourceRect.midX - size / 2, y: line.grid, width: size, height: 0),
 				to: self
 			)
-			.insetBy(dx: 0, dy: -0.25)
+			.insetBy(dx: -threshold, dy: -0.25)
 		}
 		for line in gridHViews {
-			let size = min(line.sourceRect.size.height + threshold, container.bounds.height)
+			let size = min(line.sourceRect.size.height, container.bounds.height)
 			line.frame = container.convert(
 				CGRect(x: line.grid, y: line.sourceRect.midY - size / 2, width: 0, height: size),
 				to: self
 			)
-			.insetBy(dx: -0.25, dy: 0)
+			.insetBy(dx: -0.25, dy: -threshold)
 		}
 	}
 
