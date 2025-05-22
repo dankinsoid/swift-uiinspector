@@ -1,7 +1,11 @@
 import SwiftUI
 
+/// A protocol for objects that can provide a custom string representation for the inspector.
+///
+/// Implement this protocol to control how your custom types are displayed in the inspector.
 public protocol UIInspectorStringConvertible {
 	
+    /// A string representation of the object suitable for display in the inspector.
 	var inspectorDescription: String { get }
 }
 

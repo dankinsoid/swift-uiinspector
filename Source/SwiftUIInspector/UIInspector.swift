@@ -1,22 +1,50 @@
 import SwiftUI
 
+/// A visual inspector view that overlays on top of your app to examine UI elements.
+/// 
+/// `UIInspector` provides tools for:
+/// - Inspecting view hierarchies
+/// - Measuring dimensions of UI elements
+/// - Picking colors from the UI
+/// - Displaying detailed information about views
+///
+/// This class is typically used through `UIInspectorController` rather than directly.
 public final class UIInspector: UIView {
 
-	public static var backgroundColor = UIColor(dark: .black, light: .white)
+    /// The background color for inspector UI elements.
+    /// Defaults to a dark/light mode adaptive color.
+    public static var backgroundColor = UIColor(dark: .black, light: .white)
 
-	public static var tintColor = UIColor(
-		dark: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
-		light: UIColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1.0)
-	)
-	public static var foregroundColor = UIColor(dark: .white, light: .black)
+    /// The tint color for inspector UI elements and highlights.
+    /// Defaults to a pink/magenta color that adapts to dark/light mode.
+    public static var tintColor = UIColor(
+        dark: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
+        light: UIColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1.0)
+    )
+    
+    /// The foreground color for text and icons in the inspector.
+    /// Defaults to white in dark mode and black in light mode.
+    public static var foregroundColor = UIColor(dark: .white, light: .black)
 
-	weak var controller: UIInspectorController?
-	var onClose: (() -> Void)?
+    /// Reference to the controller that manages this inspector.
+    weak var controller: UIInspectorController?
+    
+    /// Closure called when the close button is tapped.
+    var onClose: (() -> Void)?
 
-	public var customInfoView: (UIView) -> AnyView = { _ in AnyView(EmptyView()) }
-	public var layerConfiguration: (UIView) -> () = {
-		$0.backgroundColor = $0.tintColor.withAlphaComponent(0.3)
-	}
+    /// Customizes the additional information view shown for inspected views.
+    ///
+    /// Use this to add your own custom information to the inspector detail view.
+    /// - Parameter view: The view being inspected
+    /// - Returns: A SwiftUI view wrapped in `AnyView`
+    public var customInfoView: (UIView) -> AnyView = { _ in AnyView(EmptyView()) }
+    
+    /// Configures the appearance of layer views in the hierarchy visualization.
+    ///
+    /// By default, this sets a semi-transparent background color using the view's tint color.
+    public var layerConfiguration: (UIView) -> () = {
+        $0.backgroundColor = $0.tintColor.withAlphaComponent(0.3)
+    }
 
 	private let scroll = UIScrollView()
 	private let container = UIView()
@@ -83,6 +111,10 @@ public final class UIInspector: UIView {
 		}
 	}
 
+    /// Initializes a new inspector view.
+    ///
+    /// The inspector starts with default settings and is ready to inspect views
+    /// once added to the view hierarchy.
 	public init() {
 		super.init(frame: .zero)
 		tintColor = Self.tintColor
@@ -118,6 +150,10 @@ public final class UIInspector: UIView {
 		update()
 	}
 	
+    /// Inspects the specified view, showing its hierarchy and properties.
+    ///
+    /// This method captures the view's current state and displays it in the inspector.
+    /// - Parameter view: The view to inspect
 	public func inspect(view: UIView) {
 		if targetView !== view {
 			targetView = view
@@ -125,6 +161,9 @@ public final class UIInspector: UIView {
 		update()
 	}
 
+    /// Updates the inspector view with the current state of the target view.
+    ///
+    /// Call this method to refresh the inspector when the target view has changed.
 	public func update() {
 		guard let targetView, let window, targetView.window === window else { return }
 		
@@ -505,9 +544,12 @@ private extension UIInspector {
 
 private extension UIInspector {
 	
+    /// The available inspection modes.
 	enum Mode: Equatable {
-
+        /// Color picker mode for extracting colors from the UI.
 		case colorPalette
+        
+        /// Measurement mode for measuring dimensions of UI elements.
 		case dimensionMeasurement
 	}
 }
