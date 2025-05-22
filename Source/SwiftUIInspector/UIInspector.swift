@@ -77,6 +77,9 @@ public final class UIInspector: UIView {
 	public var layerConfiguration: (UIView) -> Void = {
 		$0.backgroundColor = $0.tintColor.withAlphaComponent(0.2)
 	}
+	
+	/// Defines the animation duration for the inspector's update.
+	public var showUpdateAnimation = true
 
 	/// Whether to hide full-screen layers in the inspector.
 	public var hideFullScreenLayers = true {
@@ -222,10 +225,12 @@ public final class UIInspector: UIView {
 	/// Call this method to refresh the inspector when the target view has changed.
 	public func update() {
 		guard let targetView, let window, targetView.window === window else { return }
-		animationView.frame = bounds
-		animationView.alpha = 1
-		addSubview(animationView)
-		setNeedsDisplay()
+		if showUpdateAnimation {
+			animationView.frame = bounds
+			animationView.alpha = 1
+			addSubview(animationView)
+			setNeedsDisplay()
+		}
 		
 		DispatchQueue.main.async {
 			self._update()
@@ -312,11 +317,13 @@ private extension UIInspector {
 //		transform.m34 = -1 / 500
 //		scroll.transform3D = CATransform3DRotate(transform, .pi / 2.5, 1, 0, 0)
 
-		DispatchQueue.main.async { [self] in
-			UIView.animate(withDuration: 0.5) {
-				animationView.alpha = 0
-			} completion: { _ in
-				animationView.removeFromSuperview()
+		if showUpdateAnimation {
+			DispatchQueue.main.async { [self] in
+				UIView.animate(withDuration: 0.5) {
+					animationView.alpha = 0
+				} completion: { _ in
+					animationView.removeFromSuperview()
+				}
 			}
 		}
 	}
