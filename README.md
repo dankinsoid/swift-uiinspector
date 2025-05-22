@@ -58,6 +58,22 @@ Button("Custom Inspector") {
 }
 ```
 
+## Screenshots
+
+Here are some screenshots showing the main features of SwiftUIInspector:
+
+### View Hierarchy Layers
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/layers.PNG" width="300">
+
+### Grid Overlay with Layers
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/layers.grid.PNG" width="300">
+
+### Color Picker Tool
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/pipette.PNG" width="300">
+
+### Measurement Tool with Grid
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/selection.grid.PNG" width="300">
+
 ## Inspector Controls
 
 The inspector provides several controls:
