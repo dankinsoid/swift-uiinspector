@@ -11,32 +11,36 @@ extension UIInspector {
 
 		var body: some View {
 			let info = (view as? UIInspectorInfoConvertable)?.inspectorInfo ?? view.defaultInspectorInfo
-			List {
-				if showHide {
-					Button("Hide Layer") {
-						onHide()
-					}
-					.foregroundColor(.red)
-				}
-				ForEach(Array(info.enumerated()), id: \.offset) { _, section in
-					SwiftUI.Section {
-						ForEach(Array(section.cells.enumerated()), id: \.offset) { _, cell in
-							HStack(alignment: .firstTextBaseline, spacing: 4) {
-								Text(cell.title)
-									.lineLimit(1)
-								Text(text(for: cell.value))
-									.lineLimit(3)
-									.multilineTextAlignment(.trailing)
-									.selectableText()
-									.frame(maxWidth: .infinity, alignment: .trailing)
-									.opacity(0.5)
-							}
+			NavigationView {
+				List {
+					if showHide {
+						Button("Hide Layer") {
+							onHide()
 						}
-					} header: {
-						Text(section.title)
+						.foregroundColor(.red)
 					}
+					ForEach(Array(info.enumerated()), id: \.offset) { _, section in
+						SwiftUI.Section {
+							ForEach(Array(section.cells.enumerated()), id: \.offset) { _, cell in
+								HStack(alignment: .firstTextBaseline, spacing: 4) {
+									Text(cell.title)
+										.lineLimit(1)
+									Text(text(for: cell.value))
+										.lineLimit(3)
+										.multilineTextAlignment(.trailing)
+										.selectableText()
+										.frame(maxWidth: .infinity, alignment: .trailing)
+										.opacity(0.5)
+								}
+							}
+						} header: {
+							Text(section.title)
+						}
+					}
+					custom(view)
 				}
-				custom(view)
+				.navigationBarTitle("")
+				.navigationBarHidden(true)
 			}
 		}
 
