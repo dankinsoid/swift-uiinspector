@@ -26,7 +26,7 @@ public extension UIView {
 					UIInspector.Cell("Class", Self.self),
 					UIInspector.Cell("Size", frame.size),
 					UIInspector.Cell("Location", frame.origin),
-					UIInspector.Cell("Global Location", convert(bounds, to: window)),
+					UIInspector.Cell("Global Location", convert(bounds, to: window).origin),
 					UIInspector.Cell("Background", backgroundColor),
 					UIInspector.Cell("Tint", tintColor),
 					UIInspector.Cell("Opacity", alpha),
