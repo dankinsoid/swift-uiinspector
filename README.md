@@ -4,11 +4,10 @@ SwiftUIInspector is a powerful debugging tool for iOS apps that allows you to in
 
 ## Features
 
-- 🔍 **View Hierarchy Inspection**: Visualize and navigate through your app's view hierarchy
+- 🔍 **View Hierarchy Inspection**: Visualize your app's view hierarchy
 - 📏 **Dimension Measurement**: Measure the size and position of UI elements
 - 🎨 **Color Picker**: Extract colors from any pixel in your UI
 - 📊 **Detailed Properties**: View detailed information about UI components
-- 📱 **Live Updates**: See changes in real-time as you interact with your app
 - 📐 **Grid Overlay**: Enable grid lines for precise alignment
 
 ## Requirements
