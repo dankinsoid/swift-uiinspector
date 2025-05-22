@@ -91,6 +91,7 @@ public final class UIInspector: UIView {
 	private var controls = UIInspectorControls()
 	private lazy var colorPipette = UIColorPipette()
 	private lazy var selectionView = UIMeasurementSelection()
+	private let animationView = UIView()
 
 	private weak var targetView: UIView?
 	private var rects: [UIView: UIView] = [:]
@@ -195,7 +196,9 @@ public final class UIInspector: UIView {
 		gridContainer.isUserInteractionEnabled = false
 		gridContainer.backgroundColor = .clear
 		addSubview(gridContainer)
-
+		
+		animationView.backgroundColor = .white
+	
 		addControls()
 		addDragGesture()
 		update()
@@ -217,12 +220,45 @@ public final class UIInspector: UIView {
 	/// Call this method to refresh the inspector when the target view has changed.
 	public func update() {
 		guard let targetView, let window, targetView.window === window else { return }
-
-		let animationView = UIView()
-		animationView.backgroundColor = .white
 		animationView.frame = bounds
+		animationView.alpha = 1
 		addSubview(animationView)
 		setNeedsDisplay()
+		
+		DispatchQueue.main.async {
+			self._update()
+		}
+	}
+
+	override public func layoutSubviews() {
+		super.layoutSubviews()
+		updateControlsLayout()
+	}
+}
+
+extension UIInspector: UIScrollViewDelegate {
+
+	public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+		container
+	}
+
+	public func scrollViewDidZoom(_ scrollView: UIScrollView) {
+		if showGrid {
+			drawGrid()
+		}
+	}
+
+	public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+		if showGrid {
+			drawGrid()
+		}
+	}
+}
+
+private extension UIInspector {
+
+	func _update() {
+		guard let targetView, let window else { return }
 		feedback.selectionChanged()
 
 		scroll.zoomScale = 1
@@ -274,7 +310,7 @@ public final class UIInspector: UIView {
 //		transform.m34 = -1 / 500
 //		scroll.transform3D = CATransform3DRotate(transform, .pi / 2.5, 1, 0, 0)
 
-		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
+		DispatchQueue.main.async { [self] in
 			UIView.animate(withDuration: 0.5) {
 				animationView.alpha = 0
 			} completion: { _ in
@@ -282,33 +318,6 @@ public final class UIInspector: UIView {
 			}
 		}
 	}
-
-	override public func layoutSubviews() {
-		super.layoutSubviews()
-		updateControlsLayout()
-	}
-}
-
-extension UIInspector: UIScrollViewDelegate {
-
-	public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
-		container
-	}
-
-	public func scrollViewDidZoom(_ scrollView: UIScrollView) {
-		if showGrid {
-			drawGrid()
-		}
-	}
-
-	public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-		if showGrid {
-			drawGrid()
-		}
-	}
-}
-
-private extension UIInspector {
 
 	func viewForSnapshot(of view: UIView) -> UIView {
 		var view = view
