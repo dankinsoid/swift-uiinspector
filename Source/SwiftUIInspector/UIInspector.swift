@@ -575,7 +575,7 @@ private extension UIInspector {
 
 	func updateButtons() {
 		controls.tintColor = tintColor
-		controls.buttons = [
+		var buttons = [
 			UIInspectorControls.Button(
 				selectedIcon: UIImage(systemName: "square.3.layers.3d.top.filled")!,
 				unselectedIcon: UIImage(systemName: "square.3.layers.3d")!,
@@ -604,12 +604,17 @@ private extension UIInspector {
 			) { [weak self] in
 				self?.update()
 			},
-			UIInspectorControls.Button(
-				icon: UIImage(systemName: "xmark.circle.fill")!
-			) { [weak self] in
-				self?.onClose?()
-			},
 		]
+		if let onClose {
+			buttons.append(
+				UIInspectorControls.Button(
+					icon: UIImage(systemName: "xmark.circle.fill")!
+				) { [weak self] in
+					onClose()
+				}
+			)
+		}
+		controls.buttons = buttons
 	}
 }
 
