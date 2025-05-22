@@ -394,6 +394,7 @@ private extension UIInspector {
 	}
 
 	func round(point: CGPoint) -> CGPoint {
+		let point = snapshot.convert(convert(point, to: snapshot).roundedToScale, to: self)
 		guard showGrid else { return point }
 		let sortedX = gridHViews
 			.filter(isVisible)

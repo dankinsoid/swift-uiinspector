@@ -365,3 +365,21 @@ extension UIGestureRecognizer.State {
 		self == .ended || self == .failed || self == .cancelled
 	}
 }
+
+extension CGFloat {
+	
+	var roundedToScale: CGFloat {
+		let scale = UIScreen.main.scale
+		return (self * scale).rounded() / scale
+	}
+}
+
+extension CGPoint {
+
+	var roundedToScale: CGPoint {
+		CGPoint(
+			x: x.roundedToScale,
+			y: y.roundedToScale
+		)
+	}
+}
