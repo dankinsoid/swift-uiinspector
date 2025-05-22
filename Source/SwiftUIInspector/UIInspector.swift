@@ -248,7 +248,7 @@ public final class UIInspector: UIView {
 		bringSubviewToFront(selectionView)
 		bringSubviewToFront(controls)
 		feedback.selectionChanged()
-		controls.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, 1000)
+//		controls.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, 1000)
 		addSubview(animationView)
 		animationView.frame = bounds
 		animationView.backgroundColor = .white
