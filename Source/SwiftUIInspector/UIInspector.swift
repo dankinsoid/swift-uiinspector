@@ -136,7 +136,12 @@ public final class UIInspector: UIView {
 	private var showLayers = false {
 		didSet {
 			for view in rects.keys {
-				view.subviews.first?.isHidden = !showLayers || hiddenRects.contains(view)
+				if hiddenRects.contains(view) {
+					view.isHidden = true
+				} else {
+					view.isHidden = false
+					view.subviews.first?.isHidden = !showLayers
+				}
 			}
 			updateButtons()
 		}
@@ -418,7 +423,7 @@ private extension UIInspector {
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
 		guard let controller, let rect = gesture.view, let source = rects[rect] else { return }
 		let hostingController = UIHostingController(
-			rootView: Info(view: source, custom: customInfoView) { [weak self] in
+			rootView: Info(view: source, custom: customInfoView, showHide: showLayers) { [weak self] in
 				rect.isHidden = true
 				self?.hiddenRects.insert(rect)
 				self?.controller?.presentedViewController?.dismiss(animated: true)
