@@ -30,34 +30,6 @@ dependencies: [
 
 Or add it directly in Xcode using File > Add Packages...
 
-## Usage
-
-```swift
-import SwiftUIInspector
-
-// Present the inspector over your current view
-Button("Show Inspector") {
-    UIInspectorController.present()
-}
-
-// Or present it for a specific view
-Button("Inspect This View") {
-    UIInspectorController.present(for: myView)
-}
-
-// Customize the inspector
-Button("Custom Inspector") {
-    UIInspectorController.present { inspector in
-        inspector.tintColor = .systemBlue
-        inspector.customInfoView = { view in
-            AnyView(
-                Text("Custom info for \(type(of: view))")
-            )
-        }
-    }
-}
-```
-
 ## Screenshots
 
 Here are some screenshots showing the main features of SwiftUIInspector:
@@ -73,6 +45,31 @@ Here are some screenshots showing the main features of SwiftUIInspector:
 
 ### Measurement Tool with Grid
 <img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/selection.grid.PNG" width="300">
+
+### View Info
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/info.PNG" width="300">
+
+## Usage
+
+```swift
+import SwiftUIInspector
+
+// Present the inspector over your current view
+UIInspectorController.present()
+
+// Or present it for a specific view
+UIInspectorController.present(for: myView)
+
+// Customize the inspector
+UIInspectorController.present { inspector in
+    inspector.tintColor = .systemBlue
+    inspector.customInfoView = { view in
+        AnyView(
+            Text("Custom info for \(type(of: view))")
+        )
+    }
+}
+```
 
 ## Inspector Controls
 

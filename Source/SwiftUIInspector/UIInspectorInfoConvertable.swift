@@ -26,8 +26,9 @@ public extension UIView {
 					UIInspector.Cell("Class", Self.self),
 					UIInspector.Cell("Size", frame.size),
 					UIInspector.Cell("Location", frame.origin),
-					UIInspector.Cell("Background", backgroundColor ),
-					UIInspector.Cell("Tint", tintColor ),
+					UIInspector.Cell("Global Location", convert(bounds, to: window)),
+					UIInspector.Cell("Background", backgroundColor),
+					UIInspector.Cell("Tint", tintColor),
 					UIInspector.Cell("Opacity", alpha),
 					UIInspector.Cell("Transform", transform3D),
 				]
@@ -47,7 +48,7 @@ extension UILabel: UIInspectorInfoConvertable {
 			UIInspector.Section(title: "Label", cells: [
 				UIInspector.Cell("Text", text ?? ""),
 				UIInspector.Cell("Font", font),
-				UIInspector.Cell("Text Color", textColor ),
+				UIInspector.Cell("Text Color", textColor),
 				UIInspector.Cell("Text Alignment", textAlignment),
 				UIInspector.Cell("Line Break Mode", lineBreakMode),
 				UIInspector.Cell("Number of Lines", numberOfLines),
@@ -63,7 +64,7 @@ extension UIButton: UIInspectorInfoConvertable {
 		defaultInspectorInfo + [
 			UIInspector.Section(title: "Button", cells: [
 				UIInspector.Cell("Title", title(for: .normal) ?? ""),
-				UIInspector.Cell("Title Color", titleColor(for: .normal) ),
+				UIInspector.Cell("Title Color", titleColor(for: .normal)),
 				UIInspector.Cell("Image", currentImage != nil ? "Set" : "None"),
 				UIInspector.Cell("Font", titleLabel?.font ?? UIFont.systemFont(ofSize: 17)),
 				UIInspector.Cell("Content Horizontal", contentHorizontalAlignment),
@@ -109,7 +110,7 @@ extension UITextField: UIInspectorInfoConvertable {
 				UIInspector.Cell("Text", text ?? ""),
 				UIInspector.Cell("Placeholder", placeholder ?? ""),
 				UIInspector.Cell("Font", font ?? UIFont.systemFont(ofSize: 17)),
-				UIInspector.Cell("Text Color", textColor ),
+				UIInspector.Cell("Text Color", textColor),
 				UIInspector.Cell("Text Alignment", textAlignment),
 				UIInspector.Cell("Border Style", borderStyle),
 				UIInspector.Cell("Keyboard Type", keyboardType),
@@ -129,7 +130,7 @@ extension UITextView: UIInspectorInfoConvertable {
 			UIInspector.Section(title: "Text View", cells: [
 				UIInspector.Cell("Text", text ?? ""),
 				UIInspector.Cell("Font", font),
-				UIInspector.Cell("Text Color", textColor ),
+				UIInspector.Cell("Text Color", textColor),
 				UIInspector.Cell("Text Alignment", textAlignment),
 				UIInspector.Cell("Is Editable", isEditable),
 				UIInspector.Cell("Is Selectable", isSelectable),
@@ -147,8 +148,8 @@ extension UISwitch: UIInspectorInfoConvertable {
 		defaultInspectorInfo + [
 			UIInspector.Section(title: "Switch", cells: [
 				UIInspector.Cell("Is On", isOn),
-				UIInspector.Cell("On Tint Color", onTintColor ),
-				UIInspector.Cell("Thumb Tint Color", thumbTintColor ),
+				UIInspector.Cell("On Tint Color", onTintColor),
+				UIInspector.Cell("Thumb Tint Color", thumbTintColor),
 			]),
 		]
 	}
@@ -162,9 +163,9 @@ extension UISlider: UIInspectorInfoConvertable {
 				UIInspector.Cell("Value", value),
 				UIInspector.Cell("Minimum", minimumValue),
 				UIInspector.Cell("Maximum", maximumValue),
-				UIInspector.Cell("Minimum Track Tint", minimumTrackTintColor ),
-				UIInspector.Cell("Maximum Track Tint", maximumTrackTintColor ),
-				UIInspector.Cell("Thumb Tint", thumbTintColor ),
+				UIInspector.Cell("Minimum Track Tint", minimumTrackTintColor),
+				UIInspector.Cell("Maximum Track Tint", maximumTrackTintColor),
+				UIInspector.Cell("Thumb Tint", thumbTintColor),
 				UIInspector.Cell("Is Continuous", isContinuous),
 			]),
 		]
@@ -177,8 +178,8 @@ extension UIProgressView: UIInspectorInfoConvertable {
 		defaultInspectorInfo + [
 			UIInspector.Section(title: "Progress View", cells: [
 				UIInspector.Cell("Progress", progress),
-				UIInspector.Cell("Progress Tint", progressTintColor ),
-				UIInspector.Cell("Track Tint", trackTintColor ),
+				UIInspector.Cell("Progress Tint", progressTintColor),
+				UIInspector.Cell("Track Tint", trackTintColor),
 				UIInspector.Cell("Progress Style", progressViewStyle),
 			]),
 		]
@@ -202,7 +203,7 @@ extension UISegmentedControl: UIInspectorInfoConvertable {
 				UIInspector.Cell("Selected Index", selectedSegmentIndex),
 				UIInspector.Cell("Number of Segments", numberOfSegments),
 				UIInspector.Cell("Is Momentary", isMomentary),
-				UIInspector.Cell("Selected Tint", selectedSegmentTintColor ),
+				UIInspector.Cell("Selected Tint", selectedSegmentTintColor),
 			]),
 			UIInspector.Section(title: "Segments", cells: segmentCells),
 		]
@@ -262,9 +263,9 @@ extension UIStackView: UIInspectorInfoConvertable {
 	}
 }
 
-extension UIScrollView {
+public extension UIScrollView {
 
-	public var defaultScrollInspectorInfo: [UIInspector.Section] {
+	var defaultScrollInspectorInfo: [UIInspector.Section] {
 		[
 			UIInspector.Section(title: "Scroll View", cells: [
 				UIInspector.Cell("Content Size", contentSize),
