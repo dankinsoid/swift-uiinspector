@@ -1,6 +1,6 @@
-# SwiftUIInspector
+# UIInspector
 
-SwiftUIInspector is a powerful debugging tool for iOS apps that allows you to inspect and analyze UI elements at runtime. It provides a visual inspector that can be overlaid on top of your app to examine view hierarchies, measure dimensions, and pick colors.
+UIInspector is a powerful debugging tool for iOS apps that allows you to inspect and analyze UI elements at runtime. It provides a visual inspector that can be overlaid on top of your app to examine view hierarchies, measure dimensions, and pick colors.
 
 ## Features
 
@@ -24,7 +24,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/yourusername/SwiftUIInspector.git", from: "1.0.0")
+    .package(url: "https://github.com/dankinsoid/swift-uiinspector.git", from: "1.0.0")
 ]
 ```
 
