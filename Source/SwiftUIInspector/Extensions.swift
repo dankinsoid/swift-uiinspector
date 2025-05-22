@@ -383,3 +383,17 @@ extension CGPoint {
 		)
 	}
 }
+
+extension UIView {
+
+	var controller: UIViewController? {
+		var responder: UIResponder? = self
+		while responder != nil {
+			if let controller = responder as? UIViewController {
+				return controller
+			}
+			responder = responder?.next
+		}
+		return nil
+	}
+}

@@ -117,7 +117,7 @@ public final class UIInspectorController: UIViewController {
 
 	override public func viewDidLoad() {
 		super.viewDidLoad()
-		inspector.controller = self
+		inspector.inspectorController = self
 		inspector.onClose = { [weak self] in
 			self?.dismiss(animated: true)
 		}

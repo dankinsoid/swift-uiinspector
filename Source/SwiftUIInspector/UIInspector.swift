@@ -16,7 +16,7 @@ import SwiftUI
 /// you can configure the inspector directly:
 ///
 /// ```swift
-/// // Get an inspector instance from the controller
+/// // Get an inspector instance from the inspectorController
 /// let inspector = UIInspectorController.present()?.inspector
 ///
 /// // Configure the inspector
@@ -58,8 +58,8 @@ public final class UIInspector: UIView {
 	/// Defaults to white in dark mode and black in light mode.
 	public static var foregroundColor = UIColor(dark: .white, light: .black)
 
-	/// Reference to the controller that manages this inspector.
-	weak var controller: UIInspectorController?
+	/// Reference to the inspectorController that manages this inspector.
+	weak var inspectorController: UIInspectorController?
 
 	/// Closure called when the close button is tapped.
 	var onClose: (() -> Void)?
@@ -446,7 +446,7 @@ private extension UIInspector {
 			rootView: Info(view: source, custom: customInfoView, showHide: showLayers) { [weak self] in
 				rect.isHidden = true
 				self?.hiddenRects.insert(rect)
-				self?.controller?.presentedViewController?.dismiss(animated: true)
+				self?.inspectorController?.presentedViewController?.dismiss(animated: true)
 			}
 		)
 		if #available(iOS 15.0, *) {
