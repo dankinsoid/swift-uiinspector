@@ -9,7 +9,7 @@ public struct Inspector: UIViewRepresentable {
 		for view: UIView? = nil,
 		configure: @escaping (UIInspector) -> Void = { _ in }
 	) {
-		self.view = view ?? UIWindow.key?.rootViewController?.topPresented
+		self.view = view ?? UIWindow.key?.rootViewController?.topPresented.view
 		self.configure = configure
 	}
 
