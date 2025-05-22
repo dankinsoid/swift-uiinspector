@@ -209,9 +209,7 @@ public final class UIInspector: UIView {
 	public func update() {
 		guard let targetView, let window, targetView.window === window else { return }
 
-		container.alpha = 0
-		controls.alpha = 0
-		backgroundColor = .white
+		let animationView = UIView()
 		scroll.zoomScale = 1
 
 		scroll.frame = bounds
@@ -247,13 +245,13 @@ public final class UIInspector: UIView {
 		if showGrid {
 			drawGrid()
 		}
-		gridViews.forEach {
-			$0.alpha = 0
-		}
 		bringSubviewToFront(selectionView)
 		bringSubviewToFront(controls)
 		feedback.selectionChanged()
 		controls.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, 1000)
+		addSubview(animationView)
+		animationView.frame = bounds
+		animationView.backgroundColor = .white
 //		scroll.layer.sublayerTransform.m34 = -1 / 500
 //		container.layer.sublayerTransform.m34 = -1 / 500
 //		layer.sublayerTransform.m34 = -1 / 500
@@ -262,14 +260,10 @@ public final class UIInspector: UIView {
 //		scroll.transform3D = CATransform3DRotate(transform, .pi / 2.5, 1, 0, 0)
 
 		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
-			UIView.animate(withDuration: 0.5) { [self] in
-				container.alpha = 1
-				controls.alpha = 1
-				gridViews.forEach {
-					$0.alpha = 1
-				}
-			} completion: { [self] _ in
-				backgroundColor = .clear
+			UIView.animate(withDuration: 0.5) {
+				animationView.alpha = 0
+			} completion: { _ in
+				animationView.removeFromSuperview()
 			}
 		}
 	}

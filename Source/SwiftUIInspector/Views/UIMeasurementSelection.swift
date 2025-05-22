@@ -6,7 +6,7 @@ final class UIMeasurementSelection: UIView {
 
 	var color: UIColor? {
 		didSet {
-			backgroundColor = color?.withAlphaComponent(0.3)
+			backgroundColor = color?.withAlphaComponent(0.5)
 			label.textColor = color
 			label.backgroundColor = UIInspector.backgroundColor
 			label.textAlignment = .center
