@@ -101,7 +101,7 @@ public final class UIInspector: UIView {
 	private var draggingControlOffset: CGPoint = .zero
 	private var draggingStart: CGPoint = .zero
 
-	private lazy var feedback = UISelectionFeedbackGenerator(view: self)
+	private lazy var feedback = UISelectionFeedbackGenerator()
 
 	private var hex = ""
 	private var isFirstAppear = true
@@ -370,7 +370,9 @@ private extension UIInspector {
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
 		guard let controller, let rect = gesture.view, let source = rects[rect] else { return }
 		let hostingController = UIHostingController(rootView: Info(view: source, custom: customInfoView))
-		hostingController.sheetPresentationController?.detents = [.medium(), .large()]
+		if #available(iOS 15.0, *) {
+			hostingController.sheetPresentationController?.detents = [.medium(), .large()]
+		}
 		controller.present(hostingController, animated: true)
 	}
 }
@@ -594,7 +596,7 @@ struct InspectorPreview: View {
 		VStack(spacing: 14) {
 			Image(systemName: "globe")
 				.imageScale(.large)
-				.foregroundStyle(.tint)
+				.foregroundColor(.blue)
 			Text("Hello, world!")
 
 			Button("Show Inspector") {

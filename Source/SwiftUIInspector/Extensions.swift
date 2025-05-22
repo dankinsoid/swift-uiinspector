@@ -315,3 +315,15 @@ extension CGBitmapInfo {
 		return alphaInfo == .premultipliedFirst || alphaInfo == .premultipliedLast
 	}
 }
+
+extension View {
+	
+	@ViewBuilder
+	func selectableText() -> some View {
+		if #available(iOS 15.0, *) {
+			textSelection(.enabled)
+		} else {
+			self
+		}
+	}
+}

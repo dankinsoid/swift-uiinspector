@@ -19,7 +19,7 @@ extension UIInspector {
 								Text(text(for: cell.value))
 									.lineLimit(3)
 									.multilineTextAlignment(.trailing)
-									.textSelection(.enabled)
+									.selectableText()
 									.frame(maxWidth: .infinity, alignment: .trailing)
 									.opacity(0.5)
 							}
@@ -32,8 +32,8 @@ extension UIInspector {
 			}
 		}
 
-		private func text(for value: Any) -> String {
-			(value as? UIInspectorStringConvertible)?.inspectorDescription ?? "\(value)"
+		private func text(for value: Any?) -> String {
+			(value as? UIInspectorStringConvertible)?.inspectorDescription ?? "\(value ?? "nil")"
 		}
 	}
 }
@@ -74,14 +74,14 @@ public extension UIInspector {
 		///
 		/// If the value conforms to `UIInspectorStringConvertible`, its
 		/// `inspectorDescription` will be used for display.
-		public var value: Any
+		public var value: Any?
 
 		/// Creates a new cell with the specified title and value.
 		///
 		/// - Parameters:
 		///   - title: The title or label for this cell
 		///   - value: The value to display
-		public init(_ title: String, _ value: Any) {
+		public init(_ title: String, _ value: Any?) {
 			self.title = title
 			self.value = value
 		}
