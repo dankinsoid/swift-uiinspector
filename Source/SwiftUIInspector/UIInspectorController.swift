@@ -8,7 +8,7 @@ import SwiftUI
 /// ## Basic Usage
 ///
 /// ```swift
-/// // Present the inspector over the current view
+/// // Present the inspector for a top view controller
 /// UIInspectorController.present()
 ///
 /// // Present the inspector for a specific view

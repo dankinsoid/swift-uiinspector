@@ -57,32 +57,26 @@ extension CATransform3D: UIInspectorStringConvertible {
 	}
 }
 
-public extension UIView {
+extension UIFont: UIInspectorStringConvertible {
 
-	var defaultInspectorInfo: [UIInspector.Section] {
-		[
-			UIInspector.Section(
-				title: "Type",
-				cells: [
-					UIInspector.Cell("Class", Self.self),
-				]
-			),
-			UIInspector.Section(
-				title: "Frame",
-				cells: [
-					UIInspector.Cell("Size", frame.size),
-					UIInspector.Cell("Location", frame.origin),
-				]
-			),
-			UIInspector.Section(
-				title: "Basic",
-				cells: [
-					UIInspector.Cell("Background", backgroundColor ?? UIColor.clear),
-					UIInspector.Cell("Tint", tintColor ?? UIColor.clear),
-					UIInspector.Cell("Opacity", alpha),
-					UIInspector.Cell("Transform", transform3D),
-				]
-			),
-		]
+	public var inspectorDescription: String {
+		let name = familyName
+		let size = pointSize
+		let traits = fontDescriptor.symbolicTraits
+		var result = "\(name) \(size)"
+		if traits.contains(.traitBold) { result += " Bold" }
+		if traits.contains(.traitItalic) { result += " Italic" }
+		return result
+	}
+}
+
+extension Optional: UIInspectorStringConvertible {
+
+	public var inspectorDescription: String {
+		guard let wrapped = self else { return "nil" }
+		if let wrapped = wrapped as? UIInspectorStringConvertible {
+			return wrapped.inspectorDescription
+		}
+		return "\(wrapped)"
 	}
 }
