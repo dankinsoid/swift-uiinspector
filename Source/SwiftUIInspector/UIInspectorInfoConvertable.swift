@@ -19,28 +19,41 @@ public extension UIView {
 	///
 	/// This includes the view's class, frame size and location, background color,
 	var defaultInspectorInfo: [UIInspector.Section] {
+		var cells: [UIInspector.Cell] = [
+			UIInspector.Cell("Class", Self.self),
+			UIInspector.Cell("Size", frame.size),
+			UIInspector.Cell("Location", frame.origin),
+			UIInspector.Cell("Global Location", convert(bounds, to: window).origin),
+			UIInspector.Cell("Background", backgroundColor),
+			UIInspector.Cell("Tint", tintColor),
+			UIInspector.Cell("Opacity", alpha),
+			UIInspector.Cell("Hidden", isHidden),
+			UIInspector.Cell("Clips to Bounds", clipsToBounds),
+			UIInspector.Cell("Is Interactable", isUserInteractionEnabled)
+		]
+		if transform != .identity {
+			cells.append(
+				UIInspector.Cell("Transform", transform3D)
+			)
+		}
+		if layer.cornerRadius > 0 {
+			cells += [
+				UIInspector.Cell("Corner Radius", layer.cornerRadius),
+				UIInspector.Cell("Corner Curve", layer.cornerCurve)
+			]
+		}
+		if layer.shadowOpacity > 0, let color = layer.shadowColor {
+			cells += [
+				UIInspector.Cell("Shadow Color", color),
+				UIInspector.Cell("Shadow Radius", layer.shadowRadius),
+				UIInspector.Cell("Shadow Opacity", layer.shadowOpacity),
+				UIInspector.Cell("Shadow Offset", layer.shadowOffset),
+			]
+		}
 		var result = [
 			UIInspector.Section(
 				title: "Basic",
-				cells: [
-					UIInspector.Cell("Class", Self.self),
-					UIInspector.Cell("Size", frame.size),
-					UIInspector.Cell("Location", frame.origin),
-					UIInspector.Cell("Global Location", convert(bounds, to: window).origin),
-					UIInspector.Cell("Background", backgroundColor),
-					UIInspector.Cell("Tint", tintColor),
-					UIInspector.Cell("Opacity", alpha),
-					UIInspector.Cell("Hidden", isHidden),
-					UIInspector.Cell("Clips to Bounds", clipsToBounds),
-					UIInspector.Cell("Corner Radius", layer.cornerRadius),
-					UIInspector.Cell("Corner Curve", layer.cornerCurve),
-					UIInspector.Cell("Shadow Color", layer.shadowColor),
-					UIInspector.Cell("Shadow Radius", layer.shadowRadius),
-					UIInspector.Cell("Shadow Opacity", layer.shadowOpacity),
-					UIInspector.Cell("Shadow Offset", layer.shadowOffset),
-					UIInspector.Cell("Is Interactable", isUserInteractionEnabled),
-					UIInspector.Cell("Transform", transform3D),
-				]
+				cells: cells
 			),
 		]
 		if let scroll = self as? UIScrollView {
