@@ -509,6 +509,7 @@ private extension UIInspector {
 		case .dimensionMeasurement:
 			if gesture.state == .began {
 				addSubview(selectionView)
+				bringSubviewToFront(controls)
 				draggingStart = location
 			}
 			let startPoint = round(point: draggingStart)
