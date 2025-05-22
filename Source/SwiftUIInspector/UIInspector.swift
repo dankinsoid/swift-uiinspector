@@ -110,6 +110,7 @@ public final class UIInspector: UIView {
 	private var draggingStart: CGPoint = .zero
 
 	private lazy var feedback = UISelectionFeedbackGenerator()
+	private lazy var drag = UILongPressGestureRecognizer(target: self, action: #selector(handleDrag(_:)))
 
 	private var hex = ""
 	private var isFirstAppear = true
@@ -370,6 +371,7 @@ private extension UIInspector {
 	func round(point: CGPoint) -> CGPoint {
 		guard showGrid else { return point }
 		let sortedX = gridHViews
+			.filter(isVisible)
 			.sorted {
 				abs($0.frame.midX - point.x) < abs($1.frame.midX - point.x)
 			}
@@ -380,6 +382,7 @@ private extension UIInspector {
 //			}?.frame.midX ?? sortedX.first?.frame.midX ?? point.x
 		
 		let sortedY = gridVViews
+			.filter(isVisible)
 			.sorted {
 				abs($0.frame.midY - point.y) < abs($1.frame.midY - point.y)
 			}
@@ -394,6 +397,11 @@ private extension UIInspector {
 		let x = abs(closestX - point.x) < threshold ? closestX : point.x
 		let y = abs(closestY - point.y) < threshold ? closestY : point.y
 		return CGPoint(x: x, y: y)
+	}
+	
+	private func isVisible(_ view: UIView) -> Bool {
+		view.convert(view.bounds, to: container)
+			.intersects(convert(bounds, to: container))
 	}
 }
 
@@ -422,6 +430,10 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
 	) -> Bool {
 		false
+	}
+
+	public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+		gestureRecognizer.numberOfTouches == 1
 	}
 }
 
