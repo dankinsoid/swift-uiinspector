@@ -1,0 +1,6 @@
+import UIKit
+
+final class UIGrid: UIView {
+	
+	var grid: CGFloat = 0
+}
