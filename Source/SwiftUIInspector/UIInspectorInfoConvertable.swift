@@ -56,6 +56,303 @@ extension UILabel: UIInspectorInfoConvertable {
 				UIInspector.Cell("Text Color", textColor ?? UIColor.clear),
 				UIInspector.Cell("Text Alignment", textAlignment),
 				UIInspector.Cell("Line Break Mode", lineBreakMode),
+				UIInspector.Cell("Number of Lines", numberOfLines),
+				UIInspector.Cell("Adjusts Font Size", adjustsFontSizeToFitWidth),
+			]),
+		]
+	}
+}
+
+extension UIButton: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Button", cells: [
+				UIInspector.Cell("Title", title(for: .normal) ?? ""),
+				UIInspector.Cell("Title Color", titleColor(for: .normal) ?? UIColor.clear),
+				UIInspector.Cell("Image", currentImage != nil ? "Set" : "None"),
+				UIInspector.Cell("Font", titleLabel?.font ?? UIFont.systemFont(ofSize: 17)),
+				UIInspector.Cell("Content Horizontal", contentHorizontalAlignment),
+				UIInspector.Cell("Content Vertical", contentVerticalAlignment),
+				UIInspector.Cell("Is Enabled", isEnabled),
+				UIInspector.Cell("Is Selected", isSelected),
+				UIInspector.Cell("Is Highlighted", isHighlighted),
+			]),
+		]
+	}
+}
+
+extension UIImageView: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		var cells: [UIInspector.Cell] = [
+			UIInspector.Cell("Content Mode", contentMode),
+			UIInspector.Cell("Is Highlighted", isHighlighted),
+		]
+		
+		if let image = image {
+			cells.append(contentsOf: [
+				UIInspector.Cell("Image Size", image.size),
+				UIInspector.Cell("Image Scale", image.scale),
+				UIInspector.Cell("Rendering Mode", image.renderingMode),
+				UIInspector.Cell("Pixel Dimensions", "\(image.pixelWidth) × \(image.pixelHeight)"),
+			])
+		} else {
+			cells.append(UIInspector.Cell("Image", "None"))
+		}
+		
+		return defaultInspectorInfo + [
+			UIInspector.Section(title: "Image View", cells: cells),
+		]
+	}
+}
+
+extension UITextField: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Text Field", cells: [
+				UIInspector.Cell("Text", text ?? ""),
+				UIInspector.Cell("Placeholder", placeholder ?? ""),
+				UIInspector.Cell("Font", font ?? UIFont.systemFont(ofSize: 17)),
+				UIInspector.Cell("Text Color", textColor ?? UIColor.clear),
+				UIInspector.Cell("Text Alignment", textAlignment),
+				UIInspector.Cell("Border Style", borderStyle),
+				UIInspector.Cell("Keyboard Type", keyboardType),
+				UIInspector.Cell("Return Key", returnKeyType),
+				UIInspector.Cell("Is Secure", isSecureTextEntry),
+				UIInspector.Cell("Is Editing", isEditing),
+				UIInspector.Cell("Clear Button", clearButtonMode),
+			]),
+		]
+	}
+}
+
+extension UITextView: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Text View", cells: [
+				UIInspector.Cell("Text", text),
+				UIInspector.Cell("Font", font ?? UIFont.systemFont(ofSize: 17)),
+				UIInspector.Cell("Text Color", textColor ?? UIColor.clear),
+				UIInspector.Cell("Text Alignment", textAlignment),
+				UIInspector.Cell("Is Editable", isEditable),
+				UIInspector.Cell("Is Selectable", isSelectable),
+				UIInspector.Cell("Data Detector Types", dataDetectorTypes.rawValue),
+				UIInspector.Cell("Is Scrollable", isScrollEnabled),
+				UIInspector.Cell("Line Break Mode", textContainer.lineBreakMode),
+			]),
+		]
+	}
+}
+
+extension UISwitch: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Switch", cells: [
+				UIInspector.Cell("Is On", isOn),
+				UIInspector.Cell("On Tint Color", onTintColor ?? UIColor.clear),
+				UIInspector.Cell("Thumb Tint Color", thumbTintColor ?? UIColor.clear),
+			]),
+		]
+	}
+}
+
+extension UISlider: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Slider", cells: [
+				UIInspector.Cell("Value", value),
+				UIInspector.Cell("Minimum", minimumValue),
+				UIInspector.Cell("Maximum", maximumValue),
+				UIInspector.Cell("Minimum Track Tint", minimumTrackTintColor ?? UIColor.clear),
+				UIInspector.Cell("Maximum Track Tint", maximumTrackTintColor ?? UIColor.clear),
+				UIInspector.Cell("Thumb Tint", thumbTintColor ?? UIColor.clear),
+				UIInspector.Cell("Is Continuous", isContinuous),
+			]),
+		]
+	}
+}
+
+extension UIProgressView: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Progress View", cells: [
+				UIInspector.Cell("Progress", progress),
+				UIInspector.Cell("Progress Tint", progressTintColor ?? UIColor.clear),
+				UIInspector.Cell("Track Tint", trackTintColor ?? UIColor.clear),
+				UIInspector.Cell("Progress Style", progressViewStyle),
+			]),
+		]
+	}
+}
+
+extension UISegmentedControl: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		var segmentCells: [UIInspector.Cell] = []
+		for i in 0..<numberOfSegments {
+			if let title = titleForSegment(at: i) {
+				segmentCells.append(UIInspector.Cell("Segment \(i) Title", title))
+			} else if let image = imageForSegment(at: i) {
+				segmentCells.append(UIInspector.Cell("Segment \(i) Image", "Set (\(image.size.width) × \(image.size.height))"))
+			}
+		}
+		
+		return defaultInspectorInfo + [
+			UIInspector.Section(title: "Segmented Control", cells: [
+				UIInspector.Cell("Selected Index", selectedSegmentIndex),
+				UIInspector.Cell("Number of Segments", numberOfSegments),
+				UIInspector.Cell("Is Momentary", isMomentary),
+				UIInspector.Cell("Selected Tint", selectedSegmentTintColor ?? UIColor.clear),
+			]),
+			UIInspector.Section(title: "Segments", cells: segmentCells),
+		]
+	}
+}
+
+extension UITableView: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Table View", cells: [
+				UIInspector.Cell("Style", style),
+				UIInspector.Cell("Number of Sections", numberOfSections),
+				UIInspector.Cell("Total Rows", (0..<numberOfSections).reduce(0) { $0 + numberOfRows(inSection: $1) }),
+				UIInspector.Cell("Separator Style", separatorStyle),
+				UIInspector.Cell("Separator Color", separatorColor ?? UIColor.clear),
+				UIInspector.Cell("Selection Style", allowsSelection ? (allowsMultipleSelection ? "Multiple" : "Single") : "None"),
+				UIInspector.Cell("Row Height", rowHeight),
+				UIInspector.Cell("Section Header Height", sectionHeaderHeight),
+				UIInspector.Cell("Section Footer Height", sectionFooterHeight),
+				UIInspector.Cell("Is Editing", isEditing),
+			]),
+		]
+	}
+}
+
+extension UICollectionView: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Collection View", cells: [
+				UIInspector.Cell("Number of Sections", numberOfSections),
+				UIInspector.Cell("Total Items", (0..<numberOfSections).reduce(0) { $0 + numberOfItems(inSection: $1) }),
+				UIInspector.Cell("Selection Style", allowsSelection ? (allowsMultipleSelection ? "Multiple" : "Single") : "None"),
+				UIInspector.Cell("Is Prefetching", isPrefetchingEnabled),
+				UIInspector.Cell("Is Dragging", isDragging),
+				UIInspector.Cell("Is Decelerating", isDecelerating),
+			]),
+		]
+	}
+}
+
+extension UIStackView: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Stack View", cells: [
+				UIInspector.Cell("Axis", axis),
+				UIInspector.Cell("Distribution", distribution),
+				UIInspector.Cell("Alignment", alignment),
+				UIInspector.Cell("Spacing", spacing),
+				UIInspector.Cell("Is Baseline", isBaselineRelativeArrangement),
+				UIInspector.Cell("Is Layout Margins Relative", isLayoutMarginsRelativeArrangement),
+				UIInspector.Cell("Arranged Subviews", arrangedSubviews.count),
+			]),
+		]
+	}
+}
+
+extension UIScrollView: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		defaultInspectorInfo + [
+			UIInspector.Section(title: "Scroll View", cells: [
+				UIInspector.Cell("Content Size", contentSize),
+				UIInspector.Cell("Content Offset", contentOffset),
+				UIInspector.Cell("Content Inset", contentInset),
+				UIInspector.Cell("Zoom Scale", zoomScale),
+				UIInspector.Cell("Min Zoom Scale", minimumZoomScale),
+				UIInspector.Cell("Max Zoom Scale", maximumZoomScale),
+				UIInspector.Cell("Is Scrolling", isScrollEnabled),
+				UIInspector.Cell("Is Paging", isPagingEnabled),
+				UIInspector.Cell("Is Bouncing", bounces),
+				UIInspector.Cell("Shows Indicators", showsVerticalScrollIndicator || showsHorizontalScrollIndicator),
+				UIInspector.Cell("Is Dragging", isDragging),
+				UIInspector.Cell("Is Decelerating", isDecelerating),
+			]),
+		]
+	}
+}
+
+extension UIViewController: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		[
+			UIInspector.Section(title: "View Controller", cells: [
+				UIInspector.Cell("Class", type(of: self)),
+				UIInspector.Cell("Title", title ?? ""),
+				UIInspector.Cell("Is Presented", presentingViewController != nil),
+				UIInspector.Cell("Has Presented", presentedViewController != nil),
+				UIInspector.Cell("Is Modal", isModalInPresentation),
+				UIInspector.Cell("Is Moving to Parent", isMovingToParent),
+				UIInspector.Cell("Is Moving from Parent", isMovingFromParent),
+				UIInspector.Cell("Is Being Presented", isBeingPresented),
+				UIInspector.Cell("Is Being Dismissed", isBeingDismissed),
+				UIInspector.Cell("Preferred Content Size", preferredContentSize),
+			]),
+			UIInspector.Section(title: "View", cells: [
+				UIInspector.Cell("Is Loaded", isViewLoaded),
+				UIInspector.Cell("Safe Area Insets", view.safeAreaInsets),
+				UIInspector.Cell("Layout Margins", view.layoutMargins),
+			]),
+		]
+	}
+}
+
+extension UINavigationController: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		(self as UIViewController).inspectorInfo + [
+			UIInspector.Section(title: "Navigation Controller", cells: [
+				UIInspector.Cell("View Controllers", viewControllers.count),
+				UIInspector.Cell("Is Navigation Bar Hidden", isNavigationBarHidden),
+				UIInspector.Cell("Is Toolbar Hidden", isToolbarHidden),
+				UIInspector.Cell("Is Interactive Pop Gesture", interactivePopGestureRecognizer?.isEnabled ?? false),
+			]),
+		]
+	}
+}
+
+extension UITabBarController: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		(self as UIViewController).inspectorInfo + [
+			UIInspector.Section(title: "Tab Bar Controller", cells: [
+				UIInspector.Cell("View Controllers", viewControllers?.count ?? 0),
+				UIInspector.Cell("Selected Index", selectedIndex),
+				UIInspector.Cell("Is Tab Bar Hidden", tabBar.isHidden),
+				UIInspector.Cell("Is Customizing", customizableViewControllers?.count ?? 0 > 0),
+			]),
+		]
+	}
+}
+
+extension UIPageViewController: UIInspectorInfoConvertable {
+	
+	public var inspectorInfo: [UIInspector.Section] {
+		(self as UIViewController).inspectorInfo + [
+			UIInspector.Section(title: "Page View Controller", cells: [
+				UIInspector.Cell("Navigation Orientation", navigationOrientation),
+				UIInspector.Cell("Transition Style", transitionStyle),
+				UIInspector.Cell("Is Scrolling Enabled", isScrollEnabled),
+				UIInspector.Cell("Spine Location", spineLocation),
+				UIInspector.Cell("View Controllers", viewControllers?.count ?? 0),
 			]),
 		]
 	}
