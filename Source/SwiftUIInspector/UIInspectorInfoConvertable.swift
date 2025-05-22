@@ -21,21 +21,11 @@ public extension UIView {
 	var defaultInspectorInfo: [UIInspector.Section] {
 		var result = [
 			UIInspector.Section(
-				title: "Type",
-				cells: [
-					UIInspector.Cell("Class", Self.self),
-				]
-			),
-			UIInspector.Section(
-				title: "Frame",
-				cells: [
-					UIInspector.Cell("Size", frame.size),
-					UIInspector.Cell("Location", frame.origin),
-				]
-			),
-			UIInspector.Section(
 				title: "Basic",
 				cells: [
+					UIInspector.Cell("Class", Self.self),
+					UIInspector.Cell("Size", frame.size),
+					UIInspector.Cell("Location", frame.origin),
 					UIInspector.Cell("Background", backgroundColor ),
 					UIInspector.Cell("Tint", tintColor ),
 					UIInspector.Cell("Opacity", alpha),

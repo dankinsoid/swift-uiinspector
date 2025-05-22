@@ -75,7 +75,14 @@ public final class UIInspector: UIView {
 	///
 	/// By default, this sets a semi-transparent background color using the view's tint color.
 	public var layerConfiguration: (UIView) -> Void = {
-		$0.backgroundColor = $0.tintColor.withAlphaComponent(0.3)
+		$0.backgroundColor = $0.tintColor.withAlphaComponent(0.2)
+	}
+
+	/// Whether to hide full-screen layers in the inspector.
+	public var hideFullScreenLayers = true {
+		didSet {
+			update()
+		}
 	}
 
 	private let scroll = UIScrollView()
@@ -87,6 +94,7 @@ public final class UIInspector: UIView {
 
 	private weak var targetView: UIView?
 	private var rects: [UIView: UIView] = [:]
+	private var hiddenRects: Set<UIView> = []
 
 	private var horizontalGrid: [CGFloat] = []
 	private var verticalGrid: [CGFloat] = []
@@ -113,7 +121,7 @@ public final class UIInspector: UIView {
 		}
 	}
 
-	private var showGrid = false {
+	private var showGrid = true {
 		didSet {
 			for gridView in gridViews {
 				gridView.isHidden = !showGrid
@@ -125,10 +133,10 @@ public final class UIInspector: UIView {
 		}
 	}
 
-	private var showLayers = true {
+	private var showLayers = false {
 		didSet {
 			for view in rects.keys {
-				view.isHidden = !showLayers
+				view.isHidden = !showLayers || hiddenRects.contains(view)
 			}
 			updateButtons()
 		}
@@ -210,6 +218,7 @@ public final class UIInspector: UIView {
 		container.frame = scroll.bounds
 		container.subviews.forEach { $0.removeFromSuperview() }
 		rects.removeAll()
+		hiddenRects.removeAll()
 		let viewForSnapshot = viewForSnapshot(of: targetView)
 		snapshot.image = viewForSnapshot.snapshotImage()
 		let frame = targetView.convert(viewForSnapshot.bounds, to: container)
@@ -219,6 +228,9 @@ public final class UIInspector: UIView {
 		for (_, layer) in targetView.allSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
+				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size) else {
+					continue
+				}
 				let view = UIView(frame: frame)
 //				view.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, CGFloat(deep) * 10)
 				view.tintColor = tintColor
@@ -227,10 +239,17 @@ public final class UIInspector: UIView {
 				let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
+				view.isHidden = !showLayers
 				rects[view] = subview
 			}
 		}
 		updateGrid()
+		if showGrid {
+			drawGrid()
+		}
+		gridViews.forEach {
+			$0.alpha = 0
+		}
 		bringSubviewToFront(selectionView)
 		bringSubviewToFront(controls)
 		feedback.selectionChanged()
@@ -242,12 +261,15 @@ public final class UIInspector: UIView {
 //		transform.m34 = -1 / 500
 //		scroll.transform3D = CATransform3DRotate(transform, .pi / 2.5, 1, 0, 0)
 
-		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-			UIView.animate(withDuration: 0.5) {
-				self.container.alpha = 1
-				self.controls.alpha = 1
-			} completion: { _ in
-				self.backgroundColor = .clear
+		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
+			UIView.animate(withDuration: 0.5) { [self] in
+				container.alpha = 1
+				controls.alpha = 1
+				gridViews.forEach {
+					$0.alpha = 1
+				}
+			} completion: { [self] _ in
+				backgroundColor = .clear
 			}
 		}
 	}
@@ -292,52 +314,53 @@ private extension UIInspector {
 
 	func updateGrid() {
 		removeGrid()
-		horizontalGrid = rects.keys.flatMap {
-			[$0.frame.minX, $0.frame.maxX]
+		horizontalGrid.removeAll()
+		let rects = [container] + rects.keys
+		for rect in rects {
+			for x in [rect.frame.minX, rect.frame.maxX] {
+				let line = UIGrid()
+				line.grid = x
+				line.sourceRect = rect.frame
+				gridHViews.append(line)
+				horizontalGrid.append(x)
+			}
 		}
-		horizontalGrid.insert(0, at: 0)
-		horizontalGrid.append(container.bounds.width)
 		horizontalGrid = Set(horizontalGrid).sorted()
-		for grid in horizontalGrid {
-			let line = UIGrid()
-			line.grid = grid
-			gridHViews.append(line)
+		
+		verticalGrid.removeAll()
+		for rect in rects {
+			for y in [rect.frame.minY, rect.frame.maxY] {
+				let line = UIGrid()
+				line.grid = y
+				line.sourceRect = rect.frame
+				gridVViews.append(line)
+				verticalGrid.append(y)
+			}
 		}
-
-		verticalGrid = rects.keys.flatMap {
-			[$0.frame.minY, $0.frame.maxY]
-		}
-		verticalGrid.insert(0, at: 0)
-		verticalGrid.append(container.bounds.height)
 		verticalGrid = Set(verticalGrid).sorted()
 
-		for grid in verticalGrid {
-			let line = UIGrid()
-			line.grid = grid
-			gridVViews.append(line)
-		}
 		for line in gridViews {
 			line.backgroundColor = tintColor
 			line.isUserInteractionEnabled = false
 			line.isHidden = !showGrid
 			addSubview(line)
 		}
-		if showGrid {
-			drawGrid()
-		}
 	}
 
 	func drawGrid() {
+		let threshold: CGFloat = 30
 		for line in gridVViews {
+			let size = min(line.sourceRect.size.width + threshold, container.bounds.width)
 			line.frame = container.convert(
-				CGRect(x: 0, y: line.grid, width: container.bounds.width, height: 0),
+				CGRect(x: line.sourceRect.midX - size / 2, y: line.grid, width: size, height: 0),
 				to: self
 			)
 			.insetBy(dx: 0, dy: -0.25)
 		}
 		for line in gridHViews {
+			let size = min(line.sourceRect.size.height + threshold, container.bounds.height)
 			line.frame = container.convert(
-				CGRect(x: line.grid, y: 0, width: 0, height: container.bounds.height),
+				CGRect(x: line.grid, y: line.sourceRect.midY - size / 2, width: 0, height: size),
 				to: self
 			)
 			.insetBy(dx: -0.25, dy: 0)
@@ -352,12 +375,16 @@ private extension UIInspector {
 
 	func round(point: CGPoint) -> CGPoint {
 		guard showGrid else { return point }
-		let closestX = gridHViews.sorted {
-			abs($0.frame.midX - point.x) < abs($1.frame.midX - point.x)
-		}.first?.frame.midX ?? point.x
-		let closestY = gridVViews.sorted {
-			abs($0.frame.midY - point.y) < abs($1.frame.midY - point.y)
-		}.first?.frame.midY ?? point.y
+		let closestX = gridHViews
+			.filter { min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0 }
+			.sorted {
+				abs($0.frame.midX - point.x) < abs($1.frame.midX - point.x)
+			}.first?.frame.midX ?? point.x
+		let closestY = gridVViews
+			.filter { min(point.x - $0.frame.minX, $0.frame.maxX - point.x) > 0 }
+			.sorted {
+				abs($0.frame.midY - point.y) < abs($1.frame.midY - point.y)
+			}.first?.frame.midY ?? point.y
 		let threshold: CGFloat = 15
 		let x = abs(closestX - point.x) < threshold ? closestX : point.x
 		let y = abs(closestY - point.y) < threshold ? closestY : point.y
@@ -369,7 +396,13 @@ private extension UIInspector {
 
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
 		guard let controller, let rect = gesture.view, let source = rects[rect] else { return }
-		let hostingController = UIHostingController(rootView: Info(view: source, custom: customInfoView))
+		let hostingController = UIHostingController(
+			rootView: Info(view: source, custom: customInfoView) { [weak self] in
+				rect.isHidden = true
+				self?.hiddenRects.insert(rect)
+				self?.controller?.presentedViewController?.dismiss(animated: true)
+			}
+		)
 		if #available(iOS 15.0, *) {
 			hostingController.sheetPresentationController?.detents = [.medium(), .large()]
 		}

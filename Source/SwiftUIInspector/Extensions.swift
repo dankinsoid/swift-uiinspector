@@ -13,12 +13,28 @@ extension UIWindow {
 extension UIViewController {
 
 	var topPresented: UIViewController {
-		presentedViewController?.topPresented ?? self
+		let controller = presentedViewController?.topPresented ?? self
+		if let nav = controller as? ControllerWithTopChild {
+			return nav.topVisibleChildController ?? controller
+		}
+		return controller
 	}
 
 	var allPresented: [UIViewController] {
 		[self] + (presentedViewController?.allPresented ?? [])
 	}
+}
+
+public protocol ControllerWithTopChild {
+	var topVisibleChildController: UIViewController? { get }
+}
+
+extension UINavigationController: ControllerWithTopChild {
+	public var topVisibleChildController: UIViewController? { topViewController }
+}
+
+extension UITabBarController: ControllerWithTopChild {
+	public var topVisibleChildController: UIViewController? { selectedViewController }
 }
 
 extension Collection {
@@ -325,5 +341,12 @@ extension View {
 		} else {
 			self
 		}
+	}
+}
+
+extension CGSize {
+
+	func less(than size: CGSize) -> Bool {
+		width < size.width || height < size.height
 	}
 }
