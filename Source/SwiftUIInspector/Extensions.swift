@@ -255,10 +255,10 @@ extension UIImage {
 	}
 }
 
-extension UIColor {
+extension CGColor {
 
 	var hexString: String {
-		guard let cgColor = cgColor.converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil),
+		guard let cgColor = converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil),
 		      let components = cgColor.components else { return "Unknown" }
 		let red = Int(components[0] * 255)
 		let green = Int(components[1] * 255)
@@ -269,6 +269,13 @@ extension UIColor {
 		} else {
 			return String(format: "#%02X%02X%02X%02X", red, green, blue, alpha)
 		}
+	}
+}
+
+extension UIColor {
+
+	var hexString: String {
+		cgColor.hexString
 	}
 
 	convenience init(red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8) {
@@ -333,7 +340,7 @@ extension CGBitmapInfo {
 }
 
 extension View {
-	
+
 	@ViewBuilder
 	func selectableText() -> some View {
 		if #available(iOS 15.0, *) {
@@ -357,4 +364,3 @@ extension UIGestureRecognizer.State {
 		self == .ended || self == .failed || self == .cancelled
 	}
 }
-

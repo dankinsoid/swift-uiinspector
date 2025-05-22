@@ -35,6 +35,11 @@ extension UIColor: UIInspectorStringConvertible {
 	public var inspectorDescription: String { hexString }
 }
 
+extension CGColor: UIInspectorStringConvertible {
+
+	public var inspectorDescription: String { hexString }
+}
+
 extension CATransform3D: UIInspectorStringConvertible {
 
 	public var inspectorDescription: String {
