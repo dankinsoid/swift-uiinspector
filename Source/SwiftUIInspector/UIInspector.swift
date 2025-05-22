@@ -375,16 +375,27 @@ private extension UIInspector {
 
 	func round(point: CGPoint) -> CGPoint {
 		guard showGrid else { return point }
-		let closestX = gridHViews
-			.filter { min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0 }
+		let sortedX = gridHViews
 			.sorted {
 				abs($0.frame.midX - point.x) < abs($1.frame.midX - point.x)
-			}.first?.frame.midX ?? point.x
-		let closestY = gridVViews
-			.filter { min(point.x - $0.frame.minX, $0.frame.maxX - point.x) > 0 }
+			}
+		let closestX = sortedX.first?.frame.midX ?? point.x
+//		sortedX
+//			.first {
+//				min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0
+//			}?.frame.midX ?? sortedX.first?.frame.midX ?? point.x
+		
+		let sortedY = gridVViews
 			.sorted {
 				abs($0.frame.midY - point.y) < abs($1.frame.midY - point.y)
-			}.first?.frame.midY ?? point.y
+			}
+		
+		let closestY = sortedY.first?.frame.midY ?? point.y
+//		sortedY
+//			.first {
+//				min(point.x - $0.frame.minX, $0.frame.maxX - point.x) > 0
+//			}?.frame.midY ?? sortedY.first?.frame.midY ?? point.y
+//		
 		let threshold: CGFloat = 15
 		let x = abs(closestX - point.x) < threshold ? closestX : point.x
 		let y = abs(closestY - point.y) < threshold ? closestY : point.y
@@ -461,7 +472,7 @@ private extension UIInspector {
 			}
 			updateColorPicker(at: location)
 
-			if gesture.state == .ended {
+			if gesture.state.isFinal {
 				removeColorPicker()
 				UIPasteboard.general.string = hex
 			}
@@ -489,7 +500,7 @@ private extension UIInspector {
 			)
 			let selectedSize = convert(selectionView.frame, to: snapshot)
 			selectionView.label.text = selectedSize.size.inspectorDescription
-			if gesture.state == .ended {
+			if gesture.state.isFinal {
 				selectionView.removeFromSuperview()
 			}
 		}

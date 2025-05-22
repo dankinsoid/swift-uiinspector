@@ -350,3 +350,11 @@ extension CGSize {
 		width < size.width || height < size.height
 	}
 }
+
+extension UIGestureRecognizer.State {
+
+	var isFinal: Bool {
+		self == .ended || self == .failed || self == .cancelled
+	}
+}
+

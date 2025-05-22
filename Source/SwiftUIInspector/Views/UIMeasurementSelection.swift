@@ -33,6 +33,7 @@ final class UIMeasurementSelection: UIView {
 			size: labelSize
 		)
 		.insetBy(dx: -5, dy: -3)
+		.offsetBy(dx: 0, dy: -20)
 		.inside(window.convert(window.bounds, to: self))
 		label.layer.cornerRadius = min(label.bounds.height, label.bounds.width) / 2
 	}
