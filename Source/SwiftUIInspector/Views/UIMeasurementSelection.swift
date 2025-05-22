@@ -1,9 +1,9 @@
 import SwiftUI
 
 final class UIMeasurementSelection: UIView {
-	
+
 	let label = UILabel()
-	
+
 	var color: UIColor? {
 		didSet {
 			backgroundColor = color?.withAlphaComponent(0.3)
@@ -20,7 +20,7 @@ final class UIMeasurementSelection: UIView {
 		addSubview(label)
 		label.layer.masksToBounds = true
 	}
-	
+
 	override func layoutSubviews() {
 		super.layoutSubviews()
 		guard let window else { return }
@@ -37,6 +37,7 @@ final class UIMeasurementSelection: UIView {
 		label.layer.cornerRadius = min(label.bounds.height, label.bounds.width) / 2
 	}
 
+	@available(*, unavailable)
 	required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}

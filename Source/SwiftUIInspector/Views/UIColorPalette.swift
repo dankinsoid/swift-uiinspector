@@ -1,11 +1,11 @@
 import SwiftUI
 
 final class UIColorPalette: UIView {
-	
+
 	private let padding: CGFloat = 3
 	private let colorView = UIView()
 	private let label = UILabel()
-	
+
 	var color: UIColor {
 		get {
 			colorView.backgroundColor ?? .clear
@@ -18,7 +18,7 @@ final class UIColorPalette: UIView {
 			invalidateIntrinsicContentSize()
 		}
 	}
-	
+
 	override var intrinsicContentSize: CGSize {
 		let labelSize = label.intrinsicContentSize
 		return CGSize(
@@ -34,7 +34,8 @@ final class UIColorPalette: UIView {
 		addSubview(label)
 		label.font = .monospacedSystemFont(ofSize: 14, weight: .medium)
 	}
-	
+
+	@available(*, unavailable)
 	required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}

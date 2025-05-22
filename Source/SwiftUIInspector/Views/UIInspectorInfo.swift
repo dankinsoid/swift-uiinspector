@@ -1,12 +1,12 @@
 import SwiftUI
 
 extension UIInspector {
-	
+
 	struct Info: View {
-		
+
 		let view: UIView
 		let custom: (UIView) -> AnyView
-		
+
 		var body: some View {
 			let info = (view as? UIInspectorInfoConvertable)?.inspectorInfo ?? view.defaultInspectorInfo
 			List {
@@ -38,49 +38,49 @@ extension UIInspector {
 	}
 }
 
-extension UIInspector {
+public extension UIInspector {
 
-    /// A section of related information in the inspector detail view.
-    ///
-    /// Sections are used to group related properties or information about a view.
-	public struct Section {
-		
-        /// The title of the section.
+	/// A section of related information in the inspector detail view.
+	///
+	/// Sections are used to group related properties or information about a view.
+	struct Section {
+
+		/// The title of the section.
 		public var title: String
-        
-        /// The cells (rows) of information in this section.
+
+		/// The cells (rows) of information in this section.
 		public var cells: [Cell]
-		
-        /// Creates a new section with the specified title and cells.
-        ///
-        /// - Parameters:
-        ///   - title: The title of the section
-        ///   - cells: An array of cells to display in this section
+
+		/// Creates a new section with the specified title and cells.
+		///
+		/// - Parameters:
+		///   - title: The title of the section
+		///   - cells: An array of cells to display in this section
 		public init(title: String, cells: [Cell]) {
 			self.title = title
 			self.cells = cells
 		}
 	}
-	
-    /// A single cell (row) of information in an inspector section.
-    ///
-    /// Each cell represents a property or piece of information about a view.
-	public struct Cell {
 
-        /// The title or label for this cell.
+	/// A single cell (row) of information in an inspector section.
+	///
+	/// Each cell represents a property or piece of information about a view.
+	struct Cell {
+
+		/// The title or label for this cell.
 		public var title: String
-        
-        /// The value to display for this cell.
-        ///
-        /// If the value conforms to `UIInspectorStringConvertible`, its
-        /// `inspectorDescription` will be used for display.
+
+		/// The value to display for this cell.
+		///
+		/// If the value conforms to `UIInspectorStringConvertible`, its
+		/// `inspectorDescription` will be used for display.
 		public var value: Any
 
-        /// Creates a new cell with the specified title and value.
-        ///
-        /// - Parameters:
-        ///   - title: The title or label for this cell
-        ///   - value: The value to display
+		/// Creates a new cell with the specified title and value.
+		///
+		/// - Parameters:
+		///   - title: The title or label for this cell
+		///   - value: The value to display
 		public init(_ title: String, _ value: Any) {
 			self.title = title
 			self.value = value

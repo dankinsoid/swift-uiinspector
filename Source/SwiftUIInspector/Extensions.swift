@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension UIWindow {
-	
+
 	static var key: UIWindow? {
 		UIApplication.shared.connectedScenes
 			.compactMap { $0 as? UIWindowScene }
@@ -15,7 +15,7 @@ extension UIViewController {
 	var topPresented: UIViewController {
 		presentedViewController?.topPresented ?? self
 	}
-	
+
 	var allPresented: [UIViewController] {
 		[self] + (presentedViewController?.allPresented ?? [])
 	}
@@ -39,7 +39,7 @@ extension CGRect {
 }
 
 extension UIView {
-	
+
 	var allSubviews: [UIView] {
 		subviews + subviews.flatMap(\.allSubviews)
 	}
@@ -47,12 +47,12 @@ extension UIView {
 	var allSubviewsLayers: [[UIView]] {
 		[subviews] + subviews.flatMap(\.allSubviewsLayers)
 	}
-	
+
 	func snapshotImage() -> UIImage {
 		let format = UIGraphicsImageRendererFormat()
-		format.scale = self.window?.screen.scale ?? UIScreen.main.scale
+		format.scale = window?.screen.scale ?? UIScreen.main.scale
 		format.opaque = isOpaque
-		
+
 		let renderer = UIGraphicsImageRenderer(size: bounds.size, format: format)
 		return renderer.image { ctx in
 			drawHierarchy(in: bounds, afterScreenUpdates: true)
@@ -61,19 +61,19 @@ extension UIView {
 }
 
 extension UIImageView {
-	
+
 	func imagePixelPoint(from viewPoint: CGPoint) -> CGPoint {
-		guard let image = image, let cgImage = image.cgImage else { return viewPoint }
-		
+		guard let image, let cgImage = image.cgImage else { return viewPoint }
+
 		let viewSize = bounds.size
 		let imageSize = CGSize(width: CGFloat(cgImage.width), height: CGFloat(cgImage.height))
-		
+
 		let imageAspect = image.size.width / image.size.height
 		let viewAspect = viewSize.width / viewSize.height
-		
+
 		var drawSize = CGSize.zero
 		var origin = CGPoint.zero
-		
+
 		switch contentMode {
 		case .scaleAspectFit:
 			if imageAspect > viewAspect {
@@ -87,7 +87,7 @@ extension UIImageView {
 				drawSize.width = viewSize.height * imageAspect
 				origin.x = (viewSize.width - drawSize.width) / 2
 			}
-			
+
 		case .scaleAspectFill:
 			if imageAspect > viewAspect {
 				// image fills height
@@ -100,22 +100,22 @@ extension UIImageView {
 				drawSize.height = viewSize.width / imageAspect
 				origin.y = (viewSize.height - drawSize.height) / 2
 			}
-			
+
 		case .scaleToFill, .redraw:
 			drawSize = viewSize
-			
+
 		default:
 			drawSize = image.size
 		}
-		
+
 		// Учитываем сдвиг и масштаб
 		let normalized = CGPoint(
 			x: (viewPoint.x - origin.x) / drawSize.width,
 			y: (viewPoint.y - origin.y) / drawSize.height
 		)
-		
-		guard (0...1).contains(normalized.x), (0...1).contains(normalized.y) else { return viewPoint }
-		
+
+		guard (0 ... 1).contains(normalized.x), (0 ... 1).contains(normalized.y) else { return viewPoint }
+
 		return CGPoint(
 			x: normalized.x * imageSize.width,
 			y: normalized.y * imageSize.height
@@ -126,23 +126,23 @@ extension UIImageView {
 extension UIImage {
 
 	var pixelWidth: Int {
-		return cgImage?.width ?? 0
+		cgImage?.width ?? 0
 	}
-	
+
 	var pixelHeight: Int {
-		return cgImage?.height ?? 0
+		cgImage?.height ?? 0
 	}
-	
+
 	func pixelColor(at point: CGPoint) -> UIColor {
 		let x = Int(point.x)
 		let y = Int(point.y)
-		
+
 		guard 0 ..< pixelWidth ~= x && 0 ..< pixelHeight ~= y else {
 			return .clear
 		}
-		
+
 		guard
-			let cgImage = cgImage,
+			let cgImage,
 			let data = cgImage.dataProvider?.data,
 			let dataPtr = CFDataGetBytePtr(data),
 			let colorSpaceModel = cgImage.colorSpace?.model,
@@ -150,14 +150,14 @@ extension UIImage {
 		else {
 			return .clear
 		}
-		
+
 		guard colorSpaceModel == .rgb, cgImage.bitsPerPixel == 32 || cgImage.bitsPerPixel == 24 else {
 			return .clear
 		}
 		let bytesPerRow = cgImage.bytesPerRow
 		let bytesPerPixel = cgImage.bitsPerPixel / 8
 		let pixelOffset = y * bytesPerRow + x * bytesPerPixel
-		
+
 		if componentLayout.count == 4 {
 			let components = (
 				dataPtr[pixelOffset + 0],
@@ -165,12 +165,12 @@ extension UIImage {
 				dataPtr[pixelOffset + 2],
 				dataPtr[pixelOffset + 3]
 			)
-			
+
 			var alpha: UInt8 = 0
 			var red: UInt8 = 0
 			var green: UInt8 = 0
 			var blue: UInt8 = 0
-			
+
 			switch componentLayout {
 			case .bgra:
 				alpha = components.3
@@ -195,29 +195,29 @@ extension UIImage {
 			default:
 				return .clear
 			}
-			
-			/// If chroma components are premultiplied by alpha and the alpha is `0`,
-			/// keep the chroma components to their current values.
+
+			// If chroma components are premultiplied by alpha and the alpha is `0`,
+			// keep the chroma components to their current values.
 			if cgImage.bitmapInfo.chromaIsPremultipliedByAlpha, alpha != 0 {
 				let invisibleUnitAlpha = 255 / CGFloat(alpha)
 				red = UInt8((CGFloat(red) * invisibleUnitAlpha).rounded())
 				green = UInt8((CGFloat(green) * invisibleUnitAlpha).rounded())
 				blue = UInt8((CGFloat(blue) * invisibleUnitAlpha).rounded())
 			}
-			
+
 			return UIColor(red: red, green: green, blue: blue, alpha: alpha)
-			
+
 		} else if componentLayout.count == 3 {
 			let components = (
 				dataPtr[pixelOffset + 0],
 				dataPtr[pixelOffset + 1],
 				dataPtr[pixelOffset + 2]
 			)
-			
+
 			var red: UInt8 = 0
 			var green: UInt8 = 0
 			var blue: UInt8 = 0
-			
+
 			switch componentLayout {
 			case .bgr:
 				red = components.2
@@ -230,9 +230,9 @@ extension UIImage {
 			default:
 				return UIColor(red: red, green: green, blue: blue, alpha: 255)
 			}
-			
+
 			return UIColor(red: red, green: green, blue: blue, alpha: 255)
-			
+
 		} else {
 			return .clear
 		}
@@ -243,7 +243,7 @@ extension UIColor {
 
 	var hexString: String {
 		guard let cgColor = cgColor.converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil),
-				let components = cgColor.components else { return "Unknown" }
+		      let components = cgColor.components else { return "Unknown" }
 		let red = Int(components[0] * 255)
 		let green = Int(components[1] * 255)
 		let blue = Int(components[2] * 255)
@@ -254,7 +254,7 @@ extension UIColor {
 			return String(format: "#%02X%02X%02X%02X", red, green, blue, alpha)
 		}
 	}
-	
+
 	convenience init(red: UInt8, green: UInt8, blue: UInt8, alpha: UInt8) {
 		self.init(
 			red: CGFloat(red) / 255,
@@ -285,7 +285,7 @@ extension CGBitmapInfo {
 		case rgba
 		case bgr
 		case rgb
-		
+
 		var count: Int {
 			switch self {
 			case .bgr, .rgb: return 3
@@ -293,23 +293,23 @@ extension CGBitmapInfo {
 			}
 		}
 	}
-	
+
 	var componentLayout: ComponentLayout? {
 		guard let alphaInfo = CGImageAlphaInfo(rawValue: rawValue & Self.alphaInfoMask.rawValue) else { return nil }
 		let isLittleEndian = contains(.byteOrder32Little)
-		
+
 		if alphaInfo == .none {
 			return isLittleEndian ? .bgr : .rgb
 		}
 		let alphaIsFirst = alphaInfo == .premultipliedFirst || alphaInfo == .first || alphaInfo == .noneSkipFirst
-		
+
 		if isLittleEndian {
 			return alphaIsFirst ? .bgra : .abgr
 		} else {
 			return alphaIsFirst ? .argb : .rgba
 		}
 	}
-	
+
 	var chromaIsPremultipliedByAlpha: Bool {
 		let alphaInfo = CGImageAlphaInfo(rawValue: rawValue & Self.alphaInfoMask.rawValue)
 		return alphaInfo == .premultipliedFirst || alphaInfo == .premultipliedLast

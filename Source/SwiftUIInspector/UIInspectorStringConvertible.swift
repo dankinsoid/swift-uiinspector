@@ -4,8 +4,8 @@ import SwiftUI
 ///
 /// Implement this protocol to control how your custom types are displayed in the inspector.
 public protocol UIInspectorStringConvertible {
-	
-    /// A string representation of the object suitable for display in the inspector.
+
+	/// A string representation of the object suitable for display in the inspector.
 	var inspectorDescription: String { get }
 }
 
@@ -47,31 +47,31 @@ extension CATransform3D: UIInspectorStringConvertible {
 		if !isPerspective, scaleX == 1, scaleY == 1, translation == .zero { return "none" }
 
 		var result = String(format: "Translate: (%.1f, %.1f), Scale: (%.2f, %.2f, %.2f)",
-							translation.x, translation.y, scaleX, scaleY, scaleZ)
+		                    translation.x, translation.y, scaleX, scaleY, scaleZ)
 
 		if isPerspective {
 			result += String(format: ", Perspective: [%.2f %.2f %.2f %.2f]",
-							 m14, m24, m34, m44)
+			                 m14, m24, m34, m44)
 		}
 		return result
 	}
 }
 
-extension UIView {
+public extension UIView {
 
-	public var defaultInspectorInfo: [UIInspector.Section] {
+	var defaultInspectorInfo: [UIInspector.Section] {
 		[
 			UIInspector.Section(
 				title: "Type",
 				cells: [
-					UIInspector.Cell("Class", Self.self)
+					UIInspector.Cell("Class", Self.self),
 				]
 			),
 			UIInspector.Section(
 				title: "Frame",
 				cells: [
 					UIInspector.Cell("Size", frame.size),
-					UIInspector.Cell("Location", frame.origin)
+					UIInspector.Cell("Location", frame.origin),
 				]
 			),
 			UIInspector.Section(
@@ -80,9 +80,9 @@ extension UIView {
 					UIInspector.Cell("Background", backgroundColor ?? UIColor.clear),
 					UIInspector.Cell("Tint", tintColor ?? UIColor.clear),
 					UIInspector.Cell("Opacity", alpha),
-					UIInspector.Cell("Transform", transform3D)
+					UIInspector.Cell("Transform", transform3D),
 				]
-			)
+			),
 		]
 	}
 }

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// A visual inspector view that overlays on top of your app to examine UI elements.
-/// 
+///
 /// `UIInspector` provides tools for:
 /// - Inspecting view hierarchies
 /// - Measuring dimensions of UI elements
@@ -43,40 +43,40 @@ import SwiftUI
 /// ```
 public final class UIInspector: UIView {
 
-    /// The background color for inspector UI elements.
-    /// Defaults to a dark/light mode adaptive color.
-    public static var backgroundColor = UIColor(dark: .black, light: .white)
+	/// The background color for inspector UI elements.
+	/// Defaults to a dark/light mode adaptive color.
+	public static var backgroundColor = UIColor(dark: .black, light: .white)
 
-    /// The tint color for inspector UI elements and highlights.
-    /// Defaults to a pink/magenta color that adapts to dark/light mode.
-    public static var tintColor = UIColor(
-        dark: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
-        light: UIColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1.0)
-    )
-    
-    /// The foreground color for text and icons in the inspector.
-    /// Defaults to white in dark mode and black in light mode.
-    public static var foregroundColor = UIColor(dark: .white, light: .black)
+	/// The tint color for inspector UI elements and highlights.
+	/// Defaults to a pink/magenta color that adapts to dark/light mode.
+	public static var tintColor = UIColor(
+		dark: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
+		light: UIColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1.0)
+	)
 
-    /// Reference to the controller that manages this inspector.
-    weak var controller: UIInspectorController?
-    
-    /// Closure called when the close button is tapped.
-    var onClose: (() -> Void)?
+	/// The foreground color for text and icons in the inspector.
+	/// Defaults to white in dark mode and black in light mode.
+	public static var foregroundColor = UIColor(dark: .white, light: .black)
 
-    /// Customizes the additional information view shown for inspected views.
-    ///
-    /// Use this to add your own custom information to the inspector detail view.
-    /// - Parameter view: The view being inspected
-    /// - Returns: A SwiftUI view wrapped in `AnyView`
-    public var customInfoView: (UIView) -> AnyView = { _ in AnyView(EmptyView()) }
-    
-    /// Configures the appearance of layer views in the hierarchy visualization.
-    ///
-    /// By default, this sets a semi-transparent background color using the view's tint color.
-    public var layerConfiguration: (UIView) -> () = {
-        $0.backgroundColor = $0.tintColor.withAlphaComponent(0.3)
-    }
+	/// Reference to the controller that manages this inspector.
+	weak var controller: UIInspectorController?
+
+	/// Closure called when the close button is tapped.
+	var onClose: (() -> Void)?
+
+	/// Customizes the additional information view shown for inspected views.
+	///
+	/// Use this to add your own custom information to the inspector detail view.
+	/// - Parameter view: The view being inspected
+	/// - Returns: A SwiftUI view wrapped in `AnyView`
+	public var customInfoView: (UIView) -> AnyView = { _ in AnyView(EmptyView()) }
+
+	/// Configures the appearance of layer views in the hierarchy visualization.
+	///
+	/// By default, this sets a semi-transparent background color using the view's tint color.
+	public var layerConfiguration: (UIView) -> Void = {
+		$0.backgroundColor = $0.tintColor.withAlphaComponent(0.3)
+	}
 
 	private let scroll = UIScrollView()
 	private let container = UIView()
@@ -93,19 +93,20 @@ public final class UIInspector: UIView {
 	private var gridViews: [UIGrid] {
 		gridHViews + gridVViews
 	}
+
 	private var gridHViews: [UIGrid] = []
 	private var gridVViews: [UIGrid] = []
 
 	private weak var draggingView: UIView?
 	private var draggingControlOffset: CGPoint = .zero
 	private var draggingStart: CGPoint = .zero
-	
+
 	private lazy var feedback = UISelectionFeedbackGenerator(view: self)
-	
+
 	private var hex = ""
 	private var isFirstAppear = true
 	private var controlsOffset: CGPoint = .zero
-	
+
 	private var mode: Mode = .dimensionMeasurement {
 		didSet {
 			updateButtons()
@@ -114,8 +115,8 @@ public final class UIInspector: UIView {
 
 	private var showGrid = false {
 		didSet {
-			gridViews.forEach {
-				$0.isHidden = !showGrid
+			for gridView in gridViews {
+				gridView.isHidden = !showGrid
 			}
 			if showGrid {
 				drawGrid()
@@ -126,7 +127,7 @@ public final class UIInspector: UIView {
 
 	private var showLayers = true {
 		didSet {
-			rects.keys.forEach { view in
+			for view in rects.keys {
 				view.isHidden = !showLayers
 			}
 			updateButtons()
@@ -143,10 +144,10 @@ public final class UIInspector: UIView {
 		}
 	}
 
-    /// Initializes a new inspector view.
-    ///
-    /// The inspector starts with default settings and is ready to inspect views
-    /// once added to the view hierarchy.
+	/// Initializes a new inspector view.
+	///
+	/// The inspector starts with default settings and is ready to inspect views
+	/// once added to the view hierarchy.
 	public init() {
 		super.init(frame: .zero)
 		tintColor = Self.tintColor
@@ -154,17 +155,18 @@ public final class UIInspector: UIView {
 		selectionView.color = tintColor
 	}
 
+	@available(*, unavailable)
 	required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}
 
-	public override func didMoveToWindow() {
+	override public func didMoveToWindow() {
 		super.didMoveToWindow()
 		guard window != nil else { return }
 
 		snapshot.layer.magnificationFilter = .nearest
 		snapshot.isUserInteractionEnabled = false
-	
+
 		scroll.alwaysBounceHorizontal = false
 		scroll.alwaysBounceVertical = false
 		scroll.showsVerticalScrollIndicator = false
@@ -176,16 +178,16 @@ public final class UIInspector: UIView {
 
 		container.backgroundColor = .clear
 		scroll.addSubview(container)
-	
+
 		addControls()
 		addDragGesture()
 		update()
 	}
-	
-    /// Inspects the specified view, showing its hierarchy and properties.
-    ///
-    /// This method captures the view's current state and displays it in the inspector.
-    /// - Parameter view: The view to inspect
+
+	/// Inspects the specified view, showing its hierarchy and properties.
+	///
+	/// This method captures the view's current state and displays it in the inspector.
+	/// - Parameter view: The view to inspect
 	public func inspect(view: UIView) {
 		if targetView !== view {
 			targetView = view
@@ -193,17 +195,17 @@ public final class UIInspector: UIView {
 		update()
 	}
 
-    /// Updates the inspector view with the current state of the target view.
-    ///
-    /// Call this method to refresh the inspector when the target view has changed.
+	/// Updates the inspector view with the current state of the target view.
+	///
+	/// Call this method to refresh the inspector when the target view has changed.
 	public func update() {
 		guard let targetView, let window, targetView.window === window else { return }
-		
+
 		container.alpha = 0
 		controls.alpha = 0
 		backgroundColor = .white
 		scroll.zoomScale = 1
-		
+
 		scroll.frame = bounds
 		container.frame = scroll.bounds
 		container.subviews.forEach { $0.removeFromSuperview() }
@@ -213,7 +215,7 @@ public final class UIInspector: UIView {
 		let frame = targetView.convert(viewForSnapshot.bounds, to: container)
 		container.addSubview(snapshot)
 		snapshot.frame = frame
-	
+
 		for (deep, layer) in targetView.allSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
@@ -239,7 +241,7 @@ public final class UIInspector: UIView {
 //		var transform = CATransform3DIdentity
 //		transform.m34 = -1 / 500
 //		scroll.transform3D = CATransform3DRotate(transform, .pi / 2.5, 1, 0, 0)
-		
+
 		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
 			UIView.animate(withDuration: 0.5) {
 				self.container.alpha = 1
@@ -250,24 +252,24 @@ public final class UIInspector: UIView {
 		}
 	}
 
-	public override func layoutSubviews() {
+	override public func layoutSubviews() {
 		super.layoutSubviews()
 		updateControlsLayout()
 	}
 }
 
 extension UIInspector: UIScrollViewDelegate {
-	
+
 	public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
 		container
 	}
-	
+
 	public func scrollViewDidZoom(_ scrollView: UIScrollView) {
 		if showGrid {
 			drawGrid()
 		}
 	}
-	
+
 	public func scrollViewDidScroll(_ scrollView: UIScrollView) {
 		if showGrid {
 			drawGrid()
@@ -301,7 +303,7 @@ private extension UIInspector {
 			line.grid = grid
 			gridHViews.append(line)
 		}
-		
+
 		verticalGrid = rects.keys.flatMap {
 			[$0.frame.minY, $0.frame.maxY]
 		}
@@ -374,7 +376,7 @@ private extension UIInspector {
 }
 
 extension UIInspector: UIGestureRecognizerDelegate {
-	
+
 	public func gestureRecognizer(
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
@@ -423,12 +425,12 @@ private extension UIInspector {
 				addColorPicker(at: location)
 			}
 			updateColorPicker(at: location)
-			
+
 			if gesture.state == .ended {
 				removeColorPicker()
 				UIPasteboard.general.string = hex
 			}
-	
+
 		case .dimensionMeasurement:
 			if gesture.state == .began {
 				addSubview(selectionView)
@@ -468,7 +470,7 @@ private extension UIInspector {
 		addSubview(controls)
 		updateControlsLayout()
 	}
-	
+
 	func updateControlsLayout() {
 		let size = controls.intrinsicContentSize
 		let padding: CGFloat = 20
@@ -519,8 +521,8 @@ private extension UIInspector {
 			UIInspectorControls.Button(
 				icon: UIImage(systemName: "xmark.circle.fill")!
 			) { [weak self] in
-			   self?.onClose?()
-			}
+				self?.onClose?()
+			},
 		]
 	}
 }
@@ -537,7 +539,7 @@ private extension UIInspector {
 			self.colorPalette.alpha = 1
 		}
 	}
-	
+
 	func removeColorPicker() {
 		UIView.animate(withDuration: 0.1) {
 			self.colorPalette.alpha = 0
@@ -575,13 +577,13 @@ private extension UIInspector {
 }
 
 private extension UIInspector {
-	
-    /// The available inspection modes.
+
+	/// The available inspection modes.
 	enum Mode: Equatable {
-        /// Color picker mode for extracting colors from the UI.
+		/// Color picker mode for extracting colors from the UI.
 		case colorPalette
-        
-        /// Measurement mode for measuring dimensions of UI elements.
+
+		/// Measurement mode for measuring dimensions of UI elements.
 		case dimensionMeasurement
 	}
 }
@@ -594,7 +596,7 @@ struct InspectorPreview: View {
 				.imageScale(.large)
 				.foregroundStyle(.tint)
 			Text("Hello, world!")
-			
+
 			Button("Show Inspector") {
 				UIInspectorController.present()
 			}

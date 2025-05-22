@@ -1,17 +1,17 @@
 import SwiftUI
 
 final class UIInspectorControls: UIView {
-	
+
 	private let padding: CGFloat = 3
 	private let buttonSize: CGFloat = 36
 	private var buttonViews: [ButtonView] = []
-	
+
 	var buttons: [Button] = [] {
 		didSet {
 			updateButtons()
 		}
 	}
-	
+
 	init() {
 		super.init(frame: .zero)
 		backgroundColor = UIInspector.backgroundColor
@@ -23,7 +23,7 @@ final class UIInspectorControls: UIView {
 			height: buttonSize + padding * 2
 		)
 	}
-	
+
 	private func updateButtons() {
 		buttonViews.forEach { $0.removeFromSuperview() }
 		buttonViews = buttons.enumerated().map { i, button in
@@ -37,7 +37,7 @@ final class UIInspectorControls: UIView {
 		setNeedsLayout()
 		invalidateIntrinsicContentSize()
 	}
-	
+
 	override func layoutSubviews() {
 		super.layoutSubviews()
 		layer.cornerRadius = bounds.height / 2
@@ -52,31 +52,31 @@ final class UIInspectorControls: UIView {
 			offset += buttonSize
 		}
 	}
-	
+
 	struct Button {
 
 		let selectedIcon: UIImage
 		let unselectedIcon: UIImage
 		let isSelected: Bool
 		let action: () -> Void
-		
+
 		init(selectedIcon: UIImage, unselectedIcon: UIImage, isSelected: Bool, action: @escaping () -> Void) {
 			self.selectedIcon = selectedIcon
 			self.unselectedIcon = unselectedIcon
 			self.isSelected = isSelected
 			self.action = action
 		}
-		
+
 		init(icon: UIImage, isSelected: Bool = false, action: @escaping () -> Void) {
 			self.init(selectedIcon: icon, unselectedIcon: icon, isSelected: isSelected, action: action)
 		}
 	}
-	
+
 	final class ButtonView: UIControl {
-		
+
 		let imageView = UIImageView()
 		var tap: (() -> Void)?
-		
+
 		init() {
 			super.init(frame: .zero)
 			addSubview(imageView)
@@ -86,7 +86,7 @@ final class UIInspectorControls: UIView {
 			addTarget(self, action: #selector(onTouchDown), for: .touchDown)
 			addTarget(self, action: #selector(onTouchUp), for: [.touchCancel, .touchUpOutside, .touchUpInside])
 		}
-		
+
 		@objc
 		private func onTap() {
 			tap?()
@@ -102,6 +102,7 @@ final class UIInspectorControls: UIView {
 			imageView.alpha = 1
 		}
 
+		@available(*, unavailable)
 		required init?(coder: NSCoder) {
 			fatalError("init(coder:) has not been implemented")
 		}
@@ -113,10 +114,11 @@ final class UIInspectorControls: UIView {
 		}
 
 		override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
-			return true
+			true
 		}
 	}
 
+	@available(*, unavailable)
 	required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}

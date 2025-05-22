@@ -6,9 +6,9 @@ import Foundation
 /// additional information in the inspector detail view.
 public protocol UIInspectorInfoConvertable {
 
-    /// The sections of information to display in the inspector.
-    ///
-    /// Return an array of `UIInspector.Section` objects, each containing
-    /// related information cells to display.
+	/// The sections of information to display in the inspector.
+	///
+	/// Return an array of `UIInspector.Section` objects, each containing
+	/// related information cells to display.
 	var inspectorInfo: [UIInspector.Section] { get }
 }
