@@ -71,6 +71,11 @@ UIInspectorController.present { inspector in
 }
 ```
 
+You can use the following gestures:
+- **Long Press**: Start measuring dimensions or color picking. Also can be used to move the controls.
+- **Pinch**: Zoom in/out to adjust the inspector view.
+- **Tap**: Show a detailed info of the view, enabled when layers are visible.
+
 ## Inspector Controls
 
 The inspector provides several controls:
