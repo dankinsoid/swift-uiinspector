@@ -222,6 +222,7 @@ public final class UIInspector: UIView {
 		animationView.backgroundColor = .white
 		animationView.frame = bounds
 		addSubview(animationView)
+		setNeedsDisplay()
 		feedback.selectionChanged()
 
 		scroll.zoomScale = 1
