@@ -60,8 +60,9 @@ extension UIView {
 		subviews + subviews.flatMap(\.allSubviews)
 	}
 
-	var allSubviewsLayers: [[UIView]] {
-		[subviews] + subviews.flatMap(\.allSubviewsLayers)
+	var allVisibleSubviewsLayers: [[UIView]] {
+		let visible = subviews.filter { !$0.isHidden }
+		return [visible] + visible.flatMap(\.allVisibleSubviewsLayers)
 	}
 
 	func snapshotImage() -> UIImage {

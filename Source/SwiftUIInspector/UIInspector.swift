@@ -96,6 +96,7 @@ public final class UIInspector: UIView {
 	private var rects: [UIView: UIView] = [:]
 	private var hiddenRects: Set<UIView> = []
 
+	private let gridContainer = UIView()
 	private var horizontalGrid: [CGFloat] = []
 	private var verticalGrid: [CGFloat] = []
 	private var gridViews: [UIGrid] {
@@ -124,9 +125,7 @@ public final class UIInspector: UIView {
 
 	private var showGrid = true {
 		didSet {
-			for gridView in gridViews {
-				gridView.isHidden = !showGrid
-			}
+			gridContainer.isHidden = !showGrid
 			if showGrid {
 				drawGrid()
 			}
@@ -137,7 +136,7 @@ public final class UIInspector: UIView {
 	private var showLayers = false {
 		didSet {
 			for view in rects.keys {
-				view.isHidden = !showLayers || hiddenRects.contains(view)
+				view.subviews.first?.isHidden = !showLayers || hiddenRects.contains(view)
 			}
 			updateButtons()
 		}
@@ -188,6 +187,10 @@ public final class UIInspector: UIView {
 		container.backgroundColor = .clear
 		scroll.addSubview(container)
 
+		gridContainer.isUserInteractionEnabled = false
+		gridContainer.backgroundColor = .clear
+		addSubview(gridContainer)
+
 		addControls()
 		addDragGesture()
 		update()
@@ -211,34 +214,45 @@ public final class UIInspector: UIView {
 		guard let targetView, let window, targetView.window === window else { return }
 
 		let animationView = UIView()
-		scroll.zoomScale = 1
+		animationView.backgroundColor = .white
+		animationView.frame = bounds
+		addSubview(animationView)
+		feedback.selectionChanged()
 
+		scroll.zoomScale = 1
 		scroll.frame = bounds
 		container.frame = scroll.bounds
-		container.subviews.forEach { $0.removeFromSuperview() }
+		gridContainer.frame = bounds
+
 		rects.removeAll()
 		hiddenRects.removeAll()
+
+		container.subviews.forEach { $0.removeFromSuperview() }
 		let viewForSnapshot = viewForSnapshot(of: targetView)
 		snapshot.image = viewForSnapshot.snapshotImage()
 		let frame = targetView.convert(viewForSnapshot.bounds, to: container)
-		container.addSubview(snapshot)
 		snapshot.frame = frame
+		container.addSubview(snapshot)
 
-		for (_, layer) in targetView.allSubviewsLayers.enumerated() {
+		for (_, layer) in targetView.allVisibleSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
 				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size) else {
 					continue
 				}
 				let view = UIView(frame: frame)
-//				view.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, CGFloat(deep) * 10)
-				view.tintColor = tintColor
-				view.layer.isDoubleSided = true
-				layerConfiguration(view)
+				view.backgroundColor = .clear
+				let viewVisual = UIView(frame: view.bounds)
+				viewVisual.isUserInteractionEnabled = false
+				view.addSubview(viewVisual)
+				// view.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, CGFloat(deep) * 10)
+				// view.layer.isDoubleSided = true
+				viewVisual.tintColor = tintColor
+				layerConfiguration(viewVisual)
 				let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
-				view.isHidden = !showLayers
+				viewVisual.isHidden = !showLayers
 				rects[view] = subview
 			}
 		}
@@ -246,13 +260,7 @@ public final class UIInspector: UIView {
 		if showGrid {
 			drawGrid()
 		}
-		bringSubviewToFront(selectionView)
-		bringSubviewToFront(controls)
-		feedback.selectionChanged()
 //		controls.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, 1000)
-		addSubview(animationView)
-		animationView.frame = bounds
-		animationView.backgroundColor = .white
 //		scroll.layer.sublayerTransform.m34 = -1 / 500
 //		container.layer.sublayerTransform.m34 = -1 / 500
 //		layer.sublayerTransform.m34 = -1 / 500
@@ -321,7 +329,7 @@ private extension UIInspector {
 			}
 		}
 		horizontalGrid = Set(horizontalGrid).sorted()
-		
+
 		verticalGrid.removeAll()
 		for rect in rects {
 			for y in [rect.frame.minY, rect.frame.maxY] {
@@ -338,7 +346,7 @@ private extension UIInspector {
 			line.backgroundColor = tintColor
 			line.isUserInteractionEnabled = false
 			line.isHidden = !showGrid
-			addSubview(line)
+			gridContainer.addSubview(line)
 		}
 	}
 
@@ -348,7 +356,7 @@ private extension UIInspector {
 			let size = min(line.sourceRect.size.width, container.bounds.width)
 			line.frame = container.convert(
 				CGRect(x: line.sourceRect.midX - size / 2, y: line.grid, width: size, height: 0),
-				to: self
+				to: gridContainer
 			)
 			.insetBy(dx: -threshold, dy: -0.25)
 		}
@@ -356,7 +364,7 @@ private extension UIInspector {
 			let size = min(line.sourceRect.size.height, container.bounds.height)
 			line.frame = container.convert(
 				CGRect(x: line.grid, y: line.sourceRect.midY - size / 2, width: 0, height: size),
-				to: self
+				to: gridContainer
 			)
 			.insetBy(dx: -0.25, dy: -threshold)
 		}
@@ -380,25 +388,25 @@ private extension UIInspector {
 //			.first {
 //				min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0
 //			}?.frame.midX ?? sortedX.first?.frame.midX ?? point.x
-		
+
 		let sortedY = gridVViews
 			.filter(isVisible)
 			.sorted {
 				abs($0.frame.midY - point.y) < abs($1.frame.midY - point.y)
 			}
-		
+
 		let closestY = sortedY.first?.frame.midY ?? point.y
 //		sortedY
 //			.first {
 //				min(point.x - $0.frame.minX, $0.frame.maxX - point.x) > 0
 //			}?.frame.midY ?? sortedY.first?.frame.midY ?? point.y
-//		
+//
 		let threshold: CGFloat = 15
 		let x = abs(closestX - point.x) < threshold ? closestX : point.x
 		let y = abs(closestY - point.y) < threshold ? closestY : point.y
 		return CGPoint(x: x, y: y)
 	}
-	
+
 	private func isVisible(_ view: UIView) -> Bool {
 		view.convert(view.bounds, to: container)
 			.intersects(convert(bounds, to: container))
@@ -432,7 +440,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		false
 	}
 
-	public override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
 		gestureRecognizer.numberOfTouches == 1
 	}
 }
