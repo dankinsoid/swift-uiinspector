@@ -82,7 +82,7 @@ public final class UIInspector: UIView {
 	private let container = UIView()
 	private let snapshot = UIImageView()
 	private var controls = UIInspectorControls()
-	private lazy var colorPalette = UIColorPalette()
+	private lazy var colorPipette = UIColorPipette()
 	private lazy var selectionView = UIMeasurementSelection()
 
 	private weak var targetView: UIView?
@@ -216,7 +216,7 @@ public final class UIInspector: UIView {
 		container.addSubview(snapshot)
 		snapshot.frame = frame
 
-		for (deep, layer) in targetView.allSubviewsLayers.enumerated() {
+		for (_, layer) in targetView.allSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
 				let view = UIView(frame: frame)
@@ -421,7 +421,7 @@ private extension UIInspector {
 			return
 		}
 		switch mode {
-		case .colorPalette:
+		case .colorPipette:
 			let location = gesture.location(in: snapshot)
 			if gesture.state == .began {
 				addColorPicker(at: location)
@@ -500,13 +500,13 @@ private extension UIInspector {
 				self?.showLayers.toggle()
 			},
 			UIInspectorControls.Button(
-				icon: mode == .colorPalette ? UIImage(systemName: "eyedropper")! : UIImage(systemName: "pencil.and.ruler")!
+				icon: mode == .colorPipette ? UIImage(systemName: "eyedropper")! : UIImage(systemName: "pencil.and.ruler")!
 			) { [weak self] in
 				guard let self else { return }
-				if mode == .colorPalette {
+				if mode == .colorPipette {
 					mode = .dimensionMeasurement
 				} else {
-					mode = .colorPalette
+					mode = .colorPipette
 				}
 			},
 			UIInspectorControls.Button(
@@ -532,32 +532,32 @@ private extension UIInspector {
 private extension UIInspector {
 
 	func addColorPicker(at point: CGPoint) {
-		guard colorPalette.superview == nil else { return }
-		colorPalette.alpha = 0
-		setShadow(for: colorPalette)
-		addSubview(colorPalette)
+		guard colorPipette.superview == nil else { return }
+		colorPipette.alpha = 0
+		setShadow(for: colorPipette)
+		addSubview(colorPipette)
 		updateColorPicker(at: point)
 		UIView.animate(withDuration: 0.1) {
-			self.colorPalette.alpha = 1
+			self.colorPipette.alpha = 1
 		}
 	}
 
 	func removeColorPicker() {
 		UIView.animate(withDuration: 0.1) {
-			self.colorPalette.alpha = 0
+			self.colorPipette.alpha = 0
 		} completion: { _ in
-			self.colorPalette.removeFromSuperview()
+			self.colorPipette.removeFromSuperview()
 		}
 	}
 
 	func updateColorPicker(at point: CGPoint) {
 		if let color = snapshot.image?.pixelColor(at: snapshot.imagePixelPoint(from: point)) {
-			colorPalette.color = color
+			colorPipette.color = color
 			hex = color.hexString
 		}
-		let size = colorPalette.intrinsicContentSize
+		let size = colorPipette.intrinsicContentSize
 		let point = snapshot.convert(point, to: self)
-		colorPalette.frame = CGRect(
+		colorPipette.frame = CGRect(
 			origin: CGPoint(
 				x: point.x - size.width / 2,
 				y: point.y - 60
@@ -583,7 +583,7 @@ private extension UIInspector {
 	/// The available inspection modes.
 	enum Mode: Equatable {
 		/// Color picker mode for extracting colors from the UI.
-		case colorPalette
+		case colorPipette
 
 		/// Measurement mode for measuring dimensions of UI elements.
 		case dimensionMeasurement

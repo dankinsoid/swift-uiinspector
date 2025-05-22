@@ -1,6 +1,6 @@
 import SwiftUI
 
-final class UIColorPalette: UIView {
+final class UIColorPipette: UIView {
 
 	private let padding: CGFloat = 3
 	private let colorView = UIView()
