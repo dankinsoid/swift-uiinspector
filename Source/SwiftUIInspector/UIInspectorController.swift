@@ -4,6 +4,57 @@ import SwiftUI
 ///
 /// This controller handles presenting the inspector as a modal overlay on top of your app.
 /// It's the main entry point for using the SwiftUIInspector framework.
+///
+/// ## Basic Usage
+///
+/// ```swift
+/// // Present the inspector over the current view
+/// UIInspectorController.present()
+///
+/// // Present the inspector for a specific view
+/// UIInspectorController.present(for: myCustomView)
+/// ```
+///
+/// ## Advanced Configuration
+///
+/// You can customize the inspector's appearance and behavior using the configure closure:
+///
+/// ```swift
+/// UIInspectorController.present { inspector in
+///     // Change the highlight color
+///     inspector.tintColor = .systemGreen
+///     
+///     // Customize how view layers are displayed
+///     inspector.layerConfiguration = { view in
+///         view.backgroundColor = .systemBlue.withAlphaComponent(0.2)
+///         view.layer.borderWidth = 1
+///         view.layer.borderColor = UIColor.systemBlue.cgColor
+///     }
+///     
+///     // Add custom information to the inspector detail view
+///     inspector.customInfoView = { view in
+///         AnyView(
+///             VStack {
+///                 if let button = view as? UIButton {
+///                     Text("Button Title: \(button.title(for: .normal) ?? "None")")
+///                 }
+///                 Text("Alpha: \(view.alpha)")
+///                 Text("Tag: \(view.tag)")
+///             }
+///         )
+///     }
+/// }
+/// ```
+///
+/// ## SwiftUI Integration
+///
+/// You can use the inspector in SwiftUI by wrapping it in a button action:
+///
+/// ```swift
+/// Button("Show Inspector") {
+///     UIInspectorController.present()
+/// }
+/// ```
 public final class UIInspectorController: UIViewController {
 
     /// Presents the inspector over the current view hierarchy.

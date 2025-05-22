@@ -9,6 +9,38 @@ import SwiftUI
 /// - Displaying detailed information about views
 ///
 /// This class is typically used through `UIInspectorController` rather than directly.
+///
+/// ## Example Usage
+///
+/// While you typically use `UIInspectorController` to present the inspector,
+/// you can configure the inspector directly:
+///
+/// ```swift
+/// // Get an inspector instance from the controller
+/// let inspector = UIInspectorController.present()?.inspector
+///
+/// // Configure the inspector
+/// inspector?.tintColor = .systemBlue
+/// inspector?.layerConfiguration = { view in
+///     view.backgroundColor = .systemYellow.withAlphaComponent(0.2)
+///     view.layer.borderColor = UIColor.systemYellow.cgColor
+///     view.layer.borderWidth = 1
+/// }
+///
+/// // Add custom information to the inspector detail view
+/// inspector?.customInfoView = { view in
+///     AnyView(
+///         VStack {
+///             Text("Custom Info")
+///                 .font(.headline)
+///             Text("View tag: \(view.tag)")
+///             if let imageView = view as? UIImageView {
+///                 Text("Image size: \(imageView.image?.size.width ?? 0) x \(imageView.image?.size.height ?? 0)")
+///             }
+///         }
+///     )
+/// }
+/// ```
 public final class UIInspector: UIView {
 
     /// The background color for inspector UI elements.
