@@ -93,7 +93,7 @@ public final class UIInspector: UIView {
 	private lazy var selectionView = UIMeasurementSelection()
 	private let animationView = UIView()
 
-	private weak var targetView: UIView?
+	private(set) public weak var targetView: UIView?
 	private var rects: [UIView: UIView] = [:]
 	private var hiddenRects: Set<UIView> = []
 
@@ -167,6 +167,7 @@ public final class UIInspector: UIView {
 		tintColor = Self.tintColor
 		backgroundColor = .clear
 		selectionView.color = tintColor
+		clipsToBounds = true
 	}
 
 	@available(*, unavailable)
@@ -180,6 +181,7 @@ public final class UIInspector: UIView {
 
 		snapshot.layer.magnificationFilter = .nearest
 		snapshot.isUserInteractionEnabled = false
+		snapshot.contentMode = .scaleToFill
 
 		scroll.alwaysBounceHorizontal = false
 		scroll.alwaysBounceVertical = false
@@ -272,7 +274,7 @@ private extension UIInspector {
 		container.subviews.forEach { $0.removeFromSuperview() }
 		let viewForSnapshot = viewForSnapshot(of: targetView)
 		snapshot.image = viewForSnapshot.snapshotImage()
-		let frame = targetView.convert(viewForSnapshot.bounds, to: container)
+		let frame = viewForSnapshot.convert(viewForSnapshot.bounds, to: container)
 		snapshot.frame = frame
 		container.addSubview(snapshot)
 
@@ -646,7 +648,7 @@ private extension UIInspector {
 
 	func setShadow(for view: UIView) {
 		view.layer.shadowColor = UIInspector.foregroundColor.cgColor
-		view.layer.shadowOpacity = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? 0.2 : 0.07
+		view.layer.shadowOpacity = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? 0.14 : 0.07
 		view.layer.shadowOffset = CGSize(width: 0, height: 2)
 		view.layer.shadowRadius = 4
 	}
