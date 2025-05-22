@@ -13,7 +13,7 @@ SwiftUIInspector is a powerful debugging tool for iOS apps that allows you to in
 
 ## Requirements
 
-- iOS 14.0+
+- iOS 13.0+
 - Swift 5.9+
 - Xcode 15.0+
 
