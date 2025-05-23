@@ -34,20 +34,20 @@ Or add it directly in Xcode using File > Add Packages...
 
 Here are some screenshots showing the main features of SwiftUIInspector:
 
+### Measurement Tool with Grid
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/selection.grid.PNG" width="300">
+
+### Color Picker Tool
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/pipette.PNG" width="300">
+
+### View Info
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/info.PNG" width="300">
+
 ### View Hierarchy Layers
 <img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/layers.PNG" width="300">
 
 ### Grid Overlay with Layers
 <img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/layers.grid.PNG" width="300">
-
-### Color Picker Tool
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/pipette.PNG" width="300">
-
-### Measurement Tool with Grid
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/selection.grid.PNG" width="300">
-
-### View Info
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/info.PNG" width="300">
 
 ## Usage
 
