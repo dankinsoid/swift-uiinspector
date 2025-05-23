@@ -69,11 +69,13 @@ extension UIView {
 		let format = UIGraphicsImageRendererFormat()
 		format.scale = window?.screen.scale ?? UIScreen.main.scale
 		format.opaque = isOpaque
+		format.preferredRange = .standard
 
 		let renderer = UIGraphicsImageRenderer(size: bounds.size, format: format)
-		return renderer.image { ctx in
+		let result = renderer.image { ctx in
 			drawHierarchy(in: bounds, afterScreenUpdates: true)
 		}
+		return result
 	}
 }
 
@@ -154,7 +156,7 @@ extension UIImage {
 		let x = Int(point.x)
 		let y = Int(point.y)
 
-		guard 0 ..< pixelWidth ~= x && 0 ..< pixelHeight ~= y else {
+		guard 0 ..< pixelWidth ~= x, 0 ..< pixelHeight ~= y else {
 			return .clear
 		}
 
@@ -168,91 +170,91 @@ extension UIImage {
 			return .clear
 		}
 
-		guard colorSpaceModel == .rgb, cgImage.bitsPerPixel == 32 || cgImage.bitsPerPixel == 24 else {
+		guard colorSpaceModel == .rgb, [32, 64, 24].contains(cgImage.bitsPerPixel) else {
 			return .clear
 		}
 		let bytesPerRow = cgImage.bytesPerRow
 		let bytesPerPixel = cgImage.bitsPerPixel / 8
 		let pixelOffset = y * bytesPerRow + x * bytesPerPixel
 
-		if componentLayout.count == 4 {
-			let components = (
-				dataPtr[pixelOffset + 0],
-				dataPtr[pixelOffset + 1],
-				dataPtr[pixelOffset + 2],
-				dataPtr[pixelOffset + 3]
-			)
+		var alpha: UInt8 = 255
+		var red: UInt8 = 0
+		var green: UInt8 = 0
+		var blue: UInt8 = 0
 
-			var alpha: UInt8 = 0
-			var red: UInt8 = 0
-			var green: UInt8 = 0
-			var blue: UInt8 = 0
+		let components: [UInt8]
+		if cgImage.bitsPerPixel == 64 {
+			components = (0 ..< componentLayout.count).map {
+				let byte1 = dataPtr[pixelOffset + $0 * 2]
+				let byte2 = dataPtr[pixelOffset + $0 * 2 + 1]
+				let rawValue = UInt16(byte1) | (UInt16(byte2) << 8)
 
-			switch componentLayout {
-			case .bgra:
-				alpha = components.3
-				red = components.2
-				green = components.1
-				blue = components.0
-			case .abgr:
-				alpha = components.0
-				red = components.3
-				green = components.2
-				blue = components.1
-			case .argb:
-				alpha = components.0
-				red = components.1
-				green = components.2
-				blue = components.3
-			case .rgba:
-				alpha = components.3
-				red = components.0
-				green = components.1
-				blue = components.2
-			default:
-				return .clear
+				// Manual half-float conversion (simplified)
+				let sign = (rawValue & 0x8000) != 0
+				let exponent = Int((rawValue & 0x7C00) >> 10)
+				let mantissa = rawValue & 0x03FF
+
+				var floatValue: Float
+				if exponent == 0 {
+					floatValue = Float(mantissa) / 1024.0 / 1024.0
+				} else {
+					floatValue = Float(1024 + mantissa) / 1024.0 * pow(2.0, Float(exponent - 15))
+				}
+
+				if sign { floatValue = -floatValue }
+
+				let clampedValue = max(0.0, min(1.0, floatValue))
+				return UInt8(clampedValue * 255.0)
 			}
-
-			// If chroma components are premultiplied by alpha and the alpha is `0`,
-			// keep the chroma components to their current values.
-			if cgImage.bitmapInfo.chromaIsPremultipliedByAlpha, alpha != 0 {
-				let invisibleUnitAlpha = 255 / CGFloat(alpha)
-				red = UInt8((CGFloat(red) * invisibleUnitAlpha).rounded())
-				green = UInt8((CGFloat(green) * invisibleUnitAlpha).rounded())
-				blue = UInt8((CGFloat(blue) * invisibleUnitAlpha).rounded())
-			}
-
-			return UIColor(red: red, green: green, blue: blue, alpha: alpha)
-
-		} else if componentLayout.count == 3 {
-			let components = (
-				dataPtr[pixelOffset + 0],
-				dataPtr[pixelOffset + 1],
-				dataPtr[pixelOffset + 2]
-			)
-
-			var red: UInt8 = 0
-			var green: UInt8 = 0
-			var blue: UInt8 = 0
-
-			switch componentLayout {
-			case .bgr:
-				red = components.2
-				green = components.1
-				blue = components.0
-			case .rgb:
-				red = components.0
-				green = components.1
-				blue = components.2
-			default:
-				return UIColor(red: red, green: green, blue: blue, alpha: 255)
-			}
-
-			return UIColor(red: red, green: green, blue: blue, alpha: 255)
-
 		} else {
+			components = (0 ..< componentLayout.count).map {
+				dataPtr[pixelOffset + $0]
+			}
+		}
+
+		switch componentLayout {
+		case .bgra:
+			alpha = components[3]
+			red = components[2]
+			green = components[1]
+			blue = components[0]
+		case .abgr:
+			alpha = components[0]
+			red = components[3]
+			green = components[2]
+			blue = components[1]
+		case .argb:
+			alpha = components[0]
+			red = components[1]
+			green = components[2]
+			blue = components[3]
+		case .rgba:
+			alpha = components[3]
+			red = components[0]
+			green = components[1]
+			blue = components[2]
+		case .bgr:
+			red = components[2]
+			green = components[1]
+			blue = components[0]
+		case .rgb:
+			red = components[0]
+			green = components[1]
+			blue = components[2]
+		default:
 			return .clear
 		}
+
+		// If chroma components are premultiplied by alpha and the alpha is `0`,
+		// keep the chroma components to their current values.
+		if cgImage.bitmapInfo.chromaIsPremultipliedByAlpha, alpha != 0 {
+			let invisibleUnitAlpha = 255 / CGFloat(alpha)
+			red = UInt8((CGFloat(red) * invisibleUnitAlpha).rounded())
+			green = UInt8((CGFloat(green) * invisibleUnitAlpha).rounded())
+			blue = UInt8((CGFloat(blue) * invisibleUnitAlpha).rounded())
+		}
+
+		return UIColor(red: red, green: green, blue: blue, alpha: alpha)
 	}
 }
 
@@ -260,7 +262,7 @@ extension CGColor {
 
 	var hexString: String {
 		guard let cgColor = converted(to: CGColorSpace(name: CGColorSpace.sRGB)!, intent: .defaultIntent, options: nil),
-		      let components = cgColor.components else { return "Unknown" }
+			  let components = cgColor.components else { return "Unknown" }
 		let red = Int(components[0] * 255)
 		let green = Int(components[1] * 255)
 		let blue = Int(components[2] * 255)
@@ -367,7 +369,7 @@ extension UIGestureRecognizer.State {
 }
 
 extension CGFloat {
-	
+
 	var roundedToScale: CGFloat {
 		let scale = UIScreen.main.scale
 		return (self * scale).rounded() / scale

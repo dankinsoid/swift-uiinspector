@@ -33,6 +33,7 @@ final class UIColorPipette: UIView {
 		addSubview(colorView)
 		addSubview(label)
 		label.font = .monospacedSystemFont(ofSize: 14, weight: .medium)
+		label.text = color.hexString
 	}
 
 	@available(*, unavailable)
