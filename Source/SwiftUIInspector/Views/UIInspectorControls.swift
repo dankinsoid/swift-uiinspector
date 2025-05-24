@@ -32,7 +32,11 @@ final class UIInspectorControls: UIView {
 			buttonView.imageView.image = button.isSelected ? button.selectedIcon : button.unselectedIcon
 			buttonView.isEnabled = button.isEnabled
 			buttonView.imageView.alpha = button.isEnabled ? 1 : 0.5
-			buttonView.tap = button.action
+			buttonView.tap = { [weak self] in
+				if self?.isUserInteractionEnabled == true {
+					button.action()
+				}
+			}
 			return buttonView
 		}
 		buttonViews.forEach(addSubview)

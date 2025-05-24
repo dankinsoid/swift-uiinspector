@@ -113,10 +113,10 @@ public final class UIInspector: UIView {
 	private var isFirstAppear = true
 	private var controlsOffset: CGPoint = .zero
 	
-	private var magnificationIsEnabled = false {
+	private var isMagnificationEnabled = false {
 		didSet {
-			guard magnificationIsEnabled != oldValue else { return }
-			if magnificationIsEnabled {
+			guard isMagnificationEnabled != oldValue else { return }
+			if isMagnificationEnabled {
 				enableMagnification()
 			} else {
 				disableMagnification()
@@ -125,8 +125,24 @@ public final class UIInspector: UIView {
 		}
 	}
 
-	private var mode: Mode = .dimensionMeasurement {
+	private var isPipetteeEnabled = false {
 		didSet {
+			guard isPipetteeEnabled != oldValue else { return }
+			if isPipetteeEnabled {
+				isMeasurementEnabled = false
+			}
+			scroll.isScrollEnabled = !isPipetteeEnabled
+			updateButtons()
+		}
+	}
+	
+	private var isMeasurementEnabled = true {
+		didSet {
+			guard isMeasurementEnabled != oldValue else { return }
+			if isMeasurementEnabled {
+				isPipetteeEnabled = false
+			}
+			scroll.isScrollEnabled = !isMeasurementEnabled
 			updateButtons()
 		}
 	}
@@ -519,11 +535,12 @@ extension UIInspector: UIGestureRecognizerDelegate {
 private extension UIInspector {
 
 	func addDragGesture() {
-		drag.minimumPressDuration = 0.2
-		drag.delaysTouchesBegan = false
-		drag.cancelsTouchesInView = true
+		drag.minimumPressDuration = 0
+		drag.delaysTouchesBegan = true
+		drag.cancelsTouchesInView = false
 		drag.delegate = self
 		addGestureRecognizer(drag)
+		scroll.isScrollEnabled = false
 	}
 
 	@objc private func handleDrag(_ gesture: UILongPressGestureRecognizer) {
@@ -535,6 +552,11 @@ private extension UIInspector {
 				feedback.selectionChanged()
 			}
 		}
+		if gesture.state.isFinal {
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
+				controls.isUserInteractionEnabled = true
+			}
+		}
 		let translation = CGPoint(
 			x: location.x - draggingStart.x,
 			y: location.y - draggingStart.y
@@ -543,20 +565,24 @@ private extension UIInspector {
 			if gesture.state == .began {
 				draggingControlOffset = controlsOffset
 			}
-			controlsOffset = CGPoint(
-				x: draggingControlOffset.x + translation.x,
-				y: draggingControlOffset.y + translation.y
-			)
-			updateControlsLayout()
+			if max(abs(translation.y), abs(translation.x)) > 3 {
+				controls.isUserInteractionEnabled = false
+				controlsOffset = CGPoint(
+					x: draggingControlOffset.x + translation.x,
+					y: draggingControlOffset.y + translation.y
+				)
+				updateControlsLayout()
+			}
 			return
 		}
-		guard !magnificationIsEnabled else {
+		guard !isMagnificationEnabled else {
 			drawSelectionRectGesture(gesture, location: location)
 			return
 		}
 		guard !showLayers else { return }
-		switch mode {
-		case .colorPipette:
+		if isMeasurementEnabled {
+			drawSelectionRectGesture(gesture, location: location)
+		} else if isPipetteeEnabled {
 			let location = gesture.location(in: snapshot)
 			if gesture.state == .began {
 				addColorPicker(at: location)
@@ -567,9 +593,6 @@ private extension UIInspector {
 				removeColorPicker()
 				UIPasteboard.general.string = hex
 			}
-
-		case .dimensionMeasurement:
-			drawSelectionRectGesture(gesture, location: location)
 		}
 	}
 	
@@ -601,9 +624,9 @@ private extension UIInspector {
 		let selectedSize = convert(selectionView.frame, to: snapshot)
 		selectionView.label.text = selectedSize.size.inspectorDescription
 		if gesture.state.isFinal {
-			if magnificationIsEnabled {
+			if isMagnificationEnabled {
 				zoomToFitSelection()
-				magnificationIsEnabled = false
+				isMagnificationEnabled = false
 			}
 			selectionView.removeFromSuperview()
 		}
@@ -651,23 +674,28 @@ private extension UIInspector {
 		buttons.append(
 			UIInspectorControls.Button(
 				icon: UIImage(systemName: "arrow.up.left.and.down.right.magnifyingglass"),
-				isSelected: magnificationIsEnabled
+				isSelected: isMagnificationEnabled
 			) { [weak self] in
-				self?.magnificationIsEnabled.toggle()
+				self?.isMagnificationEnabled.toggle()
 			}
 		)
 #endif
 		buttons += [
 			UIInspectorControls.Button(
-				icon: mode == .colorPipette ? UIImage(systemName: "eyedropper") : UIImage(systemName: "pencil.and.ruler"),
-				isEnabled: !showLayers && !magnificationIsEnabled
+				icon: UIImage(systemName: "eyedropper"),
+				isSelected: isPipetteeEnabled,
+				isEnabled: !showLayers && !isMagnificationEnabled
 			) { [weak self] in
 				guard let self else { return }
-				if mode == .colorPipette {
-					mode = .dimensionMeasurement
-				} else {
-					mode = .colorPipette
-				}
+				isPipetteeEnabled.toggle()
+			},
+			UIInspectorControls.Button(
+				icon: UIImage(systemName: "pencil.and.ruler"),
+				isSelected: isMeasurementEnabled,
+				isEnabled: !showLayers && !isMagnificationEnabled
+			) { [weak self] in
+				guard let self else { return }
+				isMeasurementEnabled.toggle()
 			},
 			UIInspectorControls.Button(
 				icon: UIImage(systemName: "grid"),
@@ -701,14 +729,12 @@ private extension UIInspector {
 	}
 	
 	func enableMagnification() {
-		drag.minimumPressDuration = 0
 		viewsToDisableDuringMagnification.forEach { view in
 			view.isUserInteractionEnabled = false
 		}
 	}
 	
 	func disableMagnification() {
-		drag.minimumPressDuration = 0.2
 		viewsToDisableDuringMagnification.forEach { view in
 			view.isUserInteractionEnabled = true
 		}
