@@ -2,56 +2,76 @@ import UIKit
 
 final class UISceneBackground: UIView {
 	
-	override class var layerClass: AnyClass {
-		return CAGradientLayer.self
-	}
+	private let tintIntensity: CGFloat = 0.15
 	
-	override var tintColor: UIColor! {
-		didSet {
-			updateColors()
-		}
-	}
+	// MARK: - Initialization
 	
-	init() {
-		super.init(frame: .zero)
-		updateColors()
+	override init(frame: CGRect) {
+		super.init(frame: frame)
+		setupBackground()
 	}
 	
 	required init?(coder: NSCoder) {
-		fatalError("init(coder:) has not been implemented")
+		super.init(coder: coder)
+		setupBackground()
+	}
+	
+	// MARK: - Setup
+	
+	private func setupBackground() {
+		updateGradient()
+	}
+
+	// MARK: - Gradient Update
+	
+	private func updateGradient() {
+		let isDarkMode: Bool
+		
+		if #available(iOS 13.0, *) {
+			isDarkMode = traitCollection.userInterfaceStyle == .dark
+		} else {
+			isDarkMode = false
+		}
+		
+		let baseColor = getBaseColors(for: isDarkMode)
+		backgroundColor = applyTint(to: baseColor)
+	}
+	
+	private func getBaseColors(for isDarkMode: Bool) -> UIColor {
+		if isDarkMode {
+			return UIColor(red: 0.08, green: 0.08, blue: 0.10, alpha: 1.0)
+		} else {
+			return UIColor(red: 0.92, green: 0.92, blue: 0.94, alpha: 1.0)
+		}
+	}
+	
+	private func applyTint(to color: UIColor) -> UIColor {
+		guard let tintColor else { return color }
+		return blendColors(base: color, tint: tintColor, intensity: tintIntensity)
+	}
+
+	private func blendColors(base: UIColor, tint: UIColor, intensity: CGFloat) -> UIColor {
+		var baseR: CGFloat = 0, baseG: CGFloat = 0, baseB: CGFloat = 0, baseA: CGFloat = 0
+		var tintR: CGFloat = 0, tintG: CGFloat = 0, tintB: CGFloat = 0, tintA: CGFloat = 0
+		
+		base.getRed(&baseR, green: &baseG, blue: &baseB, alpha: &baseA)
+		tint.getRed(&tintR, green: &tintG, blue: &tintB, alpha: &tintA)
+		
+		let blendedR = baseR + (tintR - baseR) * intensity
+		let blendedG = baseG + (tintG - baseG) * intensity
+		let blendedB = baseB + (tintB - baseB) * intensity
+		
+		return UIColor(red: blendedR, green: blendedG, blue: blendedB, alpha: baseA)
+	}
+	
+	
+	override func tintColorDidChange() {
+		super.tintColorDidChange()
+		updateGradient()
 	}
 	
 	override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
 		super.traitCollectionDidChange(previousTraitCollection)
-		updateColors()
-	}
-	
-	func updateColors() {
-		guard let gradientLayer = self.layer as? CAGradientLayer else { return }
-		
-		let baseColor = tintColor ?? UIInspector.tintColor
-		var hue: CGFloat = 0
-		var saturation: CGFloat = 0
-		var brightness: CGFloat = 0
-		var alpha: CGFloat = 0
-		
-		baseColor.getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha)
-		
-		let dark: CGColor
-		let light: CGColor
-		if traitCollection.userInterfaceStyle == .dark {
-			dark = UIColor(hue: hue, saturation: 0.25, brightness: 0.35, alpha: 1).cgColor
-			light = UIColor(hue: hue, saturation: 0.22, brightness: 0.37, alpha: 1).cgColor
-		} else {
-			dark = UIColor(hue: hue, saturation: 0.25, brightness: 0.65, alpha: 1).cgColor
-			light = UIColor(hue: hue, saturation: 0.22, brightness: 0.69, alpha: 1).cgColor
-		}
-		let count = 5
-		gradientLayer.colors = (0..<count).flatMap { $0 % 2 == 0 ? [dark, dark] : [light, light] }
-		let step = 1 / Double(count)
-		gradientLayer.locations = (0..<count).flatMap { [Double($0) * step, Double($0 + 1) * step] }.map { $0 as NSNumber }
-		
-		gradientLayer.startPoint = CGPoint(x: 0, y: 1)
-		gradientLayer.endPoint = CGPoint(x: 1, y: 0)
+		updateGradient()
 	}
 }

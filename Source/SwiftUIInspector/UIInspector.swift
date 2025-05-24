@@ -148,18 +148,6 @@ public final class UIInspector: UIView {
 		}
 	}
 
-	override public var tintColor: UIColor! {
-		didSet {
-			for grid in gridViews {
-				grid.backgroundColor = tintColor
-			}
-			inspector3D.tintColor = tintColor
-			updateButtons()
-			selectionView.color = tintColor
-			background.tintColor = tintColor
-		}
-	}
-
 	/// Initializes a new inspector view.
 	///
 	/// The inspector starts with default settings and is ready to inspect views
@@ -216,6 +204,17 @@ public final class UIInspector: UIView {
 		updateButtons()
 	}
 
+	override public func tintColorDidChange() {
+		super.tintColorDidChange()
+		for grid in gridViews {
+			grid.backgroundColor = tintColor
+		}
+		inspector3D.tintColor = tintColor
+		updateButtons()
+		selectionView.color = tintColor
+		background.tintColor = tintColor
+	}
+	
 	/// Inspects the specified view, showing its hierarchy and properties.
 	///
 	/// This method captures the view's current state and displays it in the inspector.

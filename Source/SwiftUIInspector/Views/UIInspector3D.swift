@@ -26,12 +26,6 @@ final class UIInspector3D: UIView {
 		}
 	}
 
-	override var tintColor: UIColor! {
-		didSet {
-			background.tintColor = tintColor
-		}
-	}
-
 	init() {
 		super.init(frame: .zero)
 		backgroundColor = UIInspector.backgroundColor
@@ -54,6 +48,17 @@ final class UIInspector3D: UIView {
 		super.layoutSubviews()
 		background.frame = bounds
 		sceneView.frame = bounds
+	}
+
+	override func tintColorDidChange() {
+		super.tintColorDidChange()
+		background.tintColor = tintColor
+		for node in borderOverlayNodes {
+			node.geometry?.firstMaterial?.diffuse.contents = tintColor
+		}
+		for node in highlightNodes {
+			node.geometry?.firstMaterial?.emission.contents = tintColor
+		}
 	}
 
 	func update(animate: Bool = false, whenReady: (() -> Void)? = nil) {
