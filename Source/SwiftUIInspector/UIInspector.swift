@@ -91,6 +91,7 @@ public final class UIInspector: UIView {
 	private var controls = UIInspectorControls()
 	private lazy var colorPipette = UIColorPipette()
 	private lazy var selectionView = UIMeasurementSelection()
+	private let inspector3D = UIInspector3D()
 	private let animationView = UIView()
 
 	private(set) public weak var targetView: UIView?
@@ -136,14 +137,20 @@ public final class UIInspector: UIView {
 
 	private var showLayers = false {
 		didSet {
-			for view in rects.keys {
-				if hiddenRects.contains(view) {
-					view.isHidden = true
-				} else {
-					view.isHidden = false
-					view.subviews.first?.isHidden = !showLayers
-				}
+			guard oldValue != showLayers else { return }
+			if showLayers, let targetView {
+				inspector3D.inspect(view: targetView)
 			}
+			inspector3D.isHidden = !showLayers
+			
+//			for view in rects.keys {
+//				if hiddenRects.contains(view) {
+//					view.isHidden = true
+//				} else {
+//					view.isHidden = false
+//					view.subviews.first?.isHidden = !showLayers
+//				}
+//			}
 			updateButtons()
 		}
 	}
@@ -168,17 +175,7 @@ public final class UIInspector: UIView {
 		backgroundColor = .clear
 		selectionView.color = tintColor
 		clipsToBounds = true
-	}
-
-	@available(*, unavailable)
-	required init?(coder: NSCoder) {
-		fatalError("init(coder:) has not been implemented")
-	}
-
-	override public func didMoveToWindow() {
-		super.didMoveToWindow()
-		guard window != nil else { return }
-
+	
 		snapshot.layer.magnificationFilter = .nearest
 		snapshot.isUserInteractionEnabled = false
 		snapshot.contentMode = .scaleToFill
@@ -198,12 +195,27 @@ public final class UIInspector: UIView {
 		gridContainer.isUserInteractionEnabled = false
 		gridContainer.backgroundColor = .clear
 		addSubview(gridContainer)
+		addSubview(inspector3D)
+		inspector3D.isHidden = true
+		inspector3D.notifyViewSelected = { [weak self] view in
+			self?.didTap(on: view)
+		}
 		
 		animationView.backgroundColor = .white
 	
 		addControls()
 		addDragGesture()
+	}
+
+	@available(*, unavailable)
+	required init?(coder: NSCoder) {
+		fatalError("init(coder:) has not been implemented")
+	}
+
+	override public func didMoveToWindow() {
+		super.didMoveToWindow()
 		update()
+		updateButtons()
 	}
 
 	/// Inspects the specified view, showing its hierarchy and properties.
@@ -211,9 +223,7 @@ public final class UIInspector: UIView {
 	/// This method captures the view's current state and displays it in the inspector.
 	/// - Parameter view: The view to inspect
 	public func inspect(view: UIView) {
-		if targetView !== view {
-			targetView = view
-		}
+		targetView = view
 		update()
 	}
 
@@ -269,6 +279,10 @@ private extension UIInspector {
 		scroll.frame = bounds
 		container.frame = scroll.bounds
 		gridContainer.frame = bounds
+		inspector3D.frame = bounds
+		if !inspector3D.isHidden {
+			inspector3D.update()
+		}
 
 		rects.removeAll()
 		hiddenRects.removeAll()
@@ -293,12 +307,12 @@ private extension UIInspector {
 				view.addSubview(viewVisual)
 				// view.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, CGFloat(deep) * 10)
 				// view.layer.isDoubleSided = true
-				viewVisual.tintColor = tintColor
-				layerConfiguration(viewVisual)
+//				viewVisual.tintColor = tintColor
+//				layerConfiguration(viewVisual)
 				let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
-				viewVisual.isHidden = !showLayers
+//				viewVisual.isHidden = !showLayers
 				rects[view] = subview
 			}
 		}
@@ -438,12 +452,17 @@ private extension UIInspector {
 private extension UIInspector {
 
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
-		guard let controller, let rect = gesture.view, let source = rects[rect] else { return }
+		guard let rect = gesture.view, let source = rects[rect] else { return }
+		didTap(on: source)
+	}
+	
+	private func didTap(on source: UIView) {
+		guard let controller else { return }
 		let hostingController = UIHostingController(
 			rootView: Info(view: source, custom: customInfoView, showHide: showLayers) { [weak self] in
-				rect.isHidden = true
-				self?.hiddenRects.insert(rect)
-				controller.presentedViewController?.dismiss(animated: true)
+//				rect.isHidden = true
+//				self?.hiddenRects.insert(rect)
+//				controller.presentedViewController?.dismiss(animated: true)
 			}
 		)
 		if #available(iOS 15.0, *) {
@@ -547,7 +566,6 @@ private extension UIInspector {
 private extension UIInspector {
 
 	func addControls() {
-		updateButtons()
 		controls.tintColor = tintColor
 		setShadow(for: controls)
 		addSubview(controls)

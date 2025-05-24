@@ -62,7 +62,7 @@ extension UIView {
 
 	var allVisibleSubviewsLayers: [[UIView]] {
 		let visible = subviews.filter { !$0.isHidden }
-		return [visible] + visible.flatMap(\.allVisibleSubviewsLayers)
+		return ([visible] + visible.flatMap(\.allVisibleSubviewsLayers)).filter { !$0.isEmpty }
 	}
 
 	func snapshotImage() -> UIImage {
@@ -77,6 +77,34 @@ extension UIView {
 		}
 		return result
 	}
+
+	func snapshotImageWithoutSubviews() -> UIImage {
+		let format = UIGraphicsImageRendererFormat()
+		format.scale = window?.screen.scale ?? UIScreen.main.scale
+		format.opaque = false
+		format.preferredRange = .standard
+		
+		let renderer = UIGraphicsImageRenderer(size: bounds.size, format: format)
+		let result = renderer.image { ctx in
+			// Clear to transparent
+			ctx.cgContext.clear(CGRect(origin: .zero, size: bounds.size))
+			
+			// Save current state
+			let originalSublayers = layer.sublayers
+			let originalBackgroundColor = layer.backgroundColor
+			
+			// Remove sublayers
+			layer.sublayers = nil
+			
+			// Render just this layer's content
+			layer.render(in: ctx.cgContext)
+			
+			// Restore
+			layer.sublayers = originalSublayers
+		}
+		return result
+	}
+	
 }
 
 extension UIImageView {
