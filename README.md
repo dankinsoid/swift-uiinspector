@@ -24,7 +24,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/dankinsoid/swift-uiinspector.git", from: "1.0.0")
+    .package(url: "https://github.com/dankinsoid/swift-uiinspector.git", from: "1.1.0")
 ]
 ```
 
@@ -37,17 +37,14 @@ Here are some screenshots showing the main features of SwiftUIInspector:
 ### Measurement Tool with Grid
 <img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/selection.grid.PNG" width="300">
 
+### View Hierarchy Layers
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/inspector3d.PNG" width="300">
+
 ### Color Picker Tool
 <img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/pipette.PNG" width="300">
 
 ### View Info
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/info.PNG" width="300">
-
-### View Hierarchy Layers
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/layers.PNG" width="300">
-
-### Grid Overlay with Layers
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/layers.grid.PNG" width="300">
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/info3d.PNG" width="300">
 
 ## Usage
 

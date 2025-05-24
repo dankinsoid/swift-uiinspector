@@ -16,7 +16,6 @@ final class UIInspector3D: UIView {
 	private var isAnimating = false
 	private let initialCameraDistance: Float = 1500
 	private let revealCameraDistance: Float = 2000
-	private let animationDuration: TimeInterval = 0.3
 	private lazy var gradientLayer = createGrayGradientLayer()
 	var showBorderOverlay = true {
 		didSet {
@@ -93,36 +92,23 @@ final class UIInspector3D: UIView {
 
 	func animateFocus(completion: (() -> Void)? = nil) {
 		print("animateFocus")
-			guard !isAnimating else { return }
-			guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
-				  let camera = cameraNode.camera,
-				  let targetView else { return }
-
-			isAnimating = true
-
-			// Compute new target values
-			let scaleForWidth = targetView.bounds.width / 2
-			let scaleForHeight = targetView.bounds.height / 2
-			let orthographicScale = max(scaleForWidth, scaleForHeight)
-			let targetPosition = SCNVector3(0, 0, initialCameraDistance)
-			let targetRotation = SCNVector3(0, 0, 0)
-
-			// Animate to them
-			SCNTransaction.begin()
-			SCNTransaction.animationDuration = animationDuration
-			SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-
+		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
+			  let camera = cameraNode.camera,
+			  let targetView else { return }
+		// Compute new target values
+		let scaleForWidth = targetView.bounds.width / 2
+		let scaleForHeight = targetView.bounds.height / 2
+		let orthographicScale = max(scaleForWidth, scaleForHeight)
+		let targetPosition = SCNVector3(0, 0, initialCameraDistance)
+		let targetRotation = SCNVector3(0, 0, 0)
+		
+		animateCamera {
 			camera.orthographicScale = orthographicScale
 			cameraNode.position = targetPosition
 			cameraNode.eulerAngles = targetRotation
-
-			SCNTransaction.completionBlock = { [weak self] in
-				DispatchQueue.main.async {
-					self?.isAnimating = false
-					completion?()
-				}
-			}
-			SCNTransaction.commit()
+		} completion: {
+			completion?()
+		}
 	}
 
 	private func setup3DView() {
@@ -187,10 +173,7 @@ final class UIInspector3D: UIView {
 
 	private func animateAppear() {
 		print("animateAppear")
-		guard !isAnimating else { return }
 		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }) else { return }
-		
-		isAnimating = true
 		
 		// Use the built-in camera controls to smoothly orbit the scene
 		let targetPoint = SCNVector3(0, 0, 0) // Center of our composition
@@ -204,14 +187,12 @@ final class UIInspector3D: UIView {
 		cameraController.interactionMode = .orbitTurntable
 		
 		// Start a smooth programmatic orbit
-		self.performSmoothOrbit(cameraController: cameraController, cameraNode: cameraNode)
+		animateCamera {
+			performSmoothOrbit(cameraController: cameraController, cameraNode: cameraNode)
+		}
 	}
 	
 	private func performSmoothOrbit(cameraController: SCNCameraController, cameraNode: SCNNode) {
-		SCNTransaction.begin()
-		SCNTransaction.animationDuration = animationDuration
-		SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-		
 		// Calculate orbital position around the center (0,0,0)
 		let targetPoint = sceneContentCenter()
 		let distance: Float = self.revealCameraDistance
@@ -230,15 +211,6 @@ final class UIInspector3D: UIView {
 		// Make camera look at the center of our composition
 		cameraNode.position = SCNVector3(x, y, z)
 		cameraNode.look(at: targetPoint)
-		
-		SCNTransaction.completionBlock = {
-			// Re-enable camera control after animation
-			DispatchQueue.main.async {
-				self.sceneView.allowsCameraControl = true
-			}
-		}
-		
-		SCNTransaction.commit()
 	}
 	
 	private func sceneContentCenter() -> SCNVector3 {
@@ -315,11 +287,60 @@ final class UIInspector3D: UIView {
 	// 3. Interactive debugging
 	func setupInteractions() {
 		// Enable camera controls
-		sceneView.allowsCameraControl = true
+		sceneView.allowsCameraControl = false
 		
 		// Add tap gesture
 		let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
 		sceneView.addGestureRecognizer(tapGesture)
+		
+		let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+		sceneView.addGestureRecognizer(panGesture)
+
+		let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
+		sceneView.addGestureRecognizer(pinchGesture)
+
+		let pan2Gesture = UIPanGestureRecognizer(target: self, action: #selector(handleTwoFingerPan(_:)))
+		pan2Gesture.minimumNumberOfTouches = 2
+		sceneView.addGestureRecognizer(pan2Gesture)
+	}
+	
+	func animateCamera(
+		duration: TimeInterval = 0.3,
+		curve: CAMediaTimingFunctionName = .easeInEaseOut,
+		_ animation: () -> Void,
+		completion: (() -> Void)? = nil
+	) {
+		guard !isAnimating else { return }
+		isAnimating = true
+
+		SCNTransaction.begin()
+		SCNTransaction.animationDuration = duration
+		SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: curve)
+
+		animation()
+
+		SCNTransaction.completionBlock = { [weak self] in
+			guard let self else { return }
+			self.isAnimating = false
+			completion?()
+		}
+		SCNTransaction.commit()
+	}
+	
+	func detachCameraControl() {
+		sceneView.allowsCameraControl = false
+		sceneView.defaultCameraController.interactionMode = .fly
+		sceneView.defaultCameraController.pointOfView = nil
+		sceneView.isUserInteractionEnabled = false
+	}
+
+	func attachCameraControl() {
+		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }) else { return }
+		sceneView.defaultCameraController.pointOfView = cameraNode
+		sceneView.defaultCameraController.target = sceneContentCenter()
+		sceneView.defaultCameraController.interactionMode = .orbitTurntable
+		sceneView.allowsCameraControl = true
+		sceneView.isUserInteractionEnabled = true
 	}
 	
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
@@ -338,6 +359,40 @@ final class UIInspector3D: UIView {
 				notifyViewSelected?(view)
 			}
 		}
+	}
+	
+	@objc func handlePan(_ gesture: UIPanGestureRecognizer) {
+		guard gesture.numberOfTouches == 1 else { return }
+		let translation = gesture.translation(in: sceneView)
+		let cameraController = sceneView.defaultCameraController
+		// Sensitivity is arbitrary; tweak as needed
+		cameraController.rotateBy(
+			x: Float(-translation.x),
+			y: Float(-translation.y)
+		)
+		gesture.setTranslation(.zero, in: sceneView)
+	}
+
+	@objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
+			  let camera = cameraNode.camera
+		else {
+			return
+		}
+		camera.orthographicScale /= Double(gesture.scale)
+		gesture.scale = 1
+	}
+
+	@objc func handleTwoFingerPan(_ gesture: UIPanGestureRecognizer) {
+		guard gesture.numberOfTouches == 2 else { return }
+		let translation = gesture.translation(in: sceneView)
+		let cameraController = sceneView.defaultCameraController
+		cameraController.translateInCameraSpaceBy(
+			x: Float(-translation.x),
+			y: Float(translation.y),
+			z: 0
+		)
+		gesture.setTranslation(.zero, in: sceneView)
 	}
 	
 	func clearSelection() {
