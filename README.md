@@ -74,6 +74,24 @@ UIInspectorController.present { inspector in
 }
 ```
 
+You can use the following gestures:
+- **Long Press**: Start measuring dimensions or color picking. Also can be used to move the controls.
+- **Pinch**: Zoom in/out to adjust the inspector view.
+- **Tap**: Show a detailed info of the view, enabled when layers are visible.
+
+Note that the inspector behaves differently when running in a simulator versus on a physical device.
+On a physical device, it's designed to be used with gestures like pan and pinch, while in the simulator you can use mouse clicks and drags.
+On a physical device, most drag gestures require a short (0.1s) press to start in order to avoid conflicts with scrolling.
+Additionally, the simulator includes a zoom button.
+
+For me I found very comfortable to enable 3-finger drag:
+
+1. System Preferences > Accessibility
+2. Scroll down to `Motor` and tap `Pointer Control` options
+3. Select `Trackpad Options`
+4. Find `Dragging Style` section
+5. Select `Three Finger Drag` from the drop-down
+
 ### Xcode Preview integration
 To use the inspector in Xcode Previews, you can add the following modifier to your SwiftUI previews:
 
@@ -86,11 +104,7 @@ import SwiftUI
         .previewInspector()
 }
 ```
-
-You can use the following gestures:
-- **Long Press**: Start measuring dimensions or color picking. Also can be used to move the controls.
-- **Pinch**: Zoom in/out to adjust the inspector view.
-- **Tap**: Show a detailed info of the view, enabled when layers are visible.
+This modifier adds a button that shows the inspector.
 
 ## Inspector Controls
 
