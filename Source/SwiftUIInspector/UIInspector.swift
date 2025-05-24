@@ -611,6 +611,7 @@ private extension UIInspector {
 	) {
 		if gesture.state == .began {
 			addSubview(selectionView)
+			selectionView.label.isHidden = isMagnificationEnabled
 			bringSubviewToFront(controls)
 			draggingStart = location
 		}
@@ -816,18 +817,6 @@ private extension UIInspector {
 		view.layer.shadowOpacity = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? 0.17 : 0.07
 		view.layer.shadowOffset = CGSize(width: 0, height: 2)
 		view.layer.shadowRadius = 6
-	}
-}
-
-private extension UIInspector {
-
-	/// The available inspection modes.
-	enum Mode: Equatable {
-		/// Color picker mode for extracting colors from the UI.
-		case colorPipette
-
-		/// Measurement mode for measuring dimensions of UI elements.
-		case dimensionMeasurement
 	}
 }
 
