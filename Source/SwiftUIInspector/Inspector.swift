@@ -24,3 +24,65 @@ public struct Inspector: UIViewRepresentable {
 		}
 	}
 }
+
+extension View {
+
+	/// Adds a button to show the inspector in the specified alignment.
+	///
+	/// - Parameter alignment: The alignment of the inspector button
+	/// - Returns: A view with the inspector button overlay
+	///
+	/// - Warning: This modifier works only on iOS simulators.
+	@ViewBuilder
+	public func previewInspector(
+		alignment: Alignment = .bottomTrailing
+	) -> some View {
+		modifier(ShowInspectorModifier(alignment: alignment))
+	}
+}
+
+private struct ShowInspectorModifier: ViewModifier {
+
+	let alignment: Alignment
+	@State private var inspectorPresented = false
+	
+	func body(content: Content) -> some View {
+		#if targetEnvironment(simulator)
+		content
+			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+			.overlay(
+				Group {
+					if !inspectorPresented {
+						Button {
+							inspectorPresented = true
+							DispatchQueue.main.async {
+								UIInspectorController.present()?.onDismiss = {
+									inspectorPresented = false
+								}
+							}
+						} label: {
+							Image(systemName: "eyeglasses")
+								.resizable()
+								.aspectRatio(contentMode: .fit)
+								.foregroundColor(Color(UIInspector.foregroundColor))
+								.padding(6)
+								.frame(width: 36, height: 36)
+								.background(Circle().fill(Color(UIInspector.backgroundColor)))
+								.shadow(
+									color: Color(UIInspector.foregroundColor).opacity(0.17),
+									radius: 4,
+									x: 0,
+									y: 1
+								)
+						}
+						.padding(20)
+					}
+				},
+				alignment: alignment
+			)
+		#else
+		content
+		#endif
+	}
+}
+

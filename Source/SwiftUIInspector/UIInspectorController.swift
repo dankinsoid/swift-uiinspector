@@ -96,6 +96,7 @@ public final class UIInspectorController: UIViewController {
 	}
 
 	public let inspector = UIInspector()
+	public var onDismiss: (() -> Void)?
 
 	override public func loadView() {
 		view = inspector
@@ -120,6 +121,11 @@ public final class UIInspectorController: UIViewController {
 		inspector.onClose = { [weak self] in
 			self?.dismiss(animated: true)
 		}
+	}
+	
+	public override func viewDidDisappear(_ animated: Bool) {
+		super.viewDidDisappear(animated)
+		onDismiss?()
 	}
 
 	/// Inspects the specified view using this controller's inspector.

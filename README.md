@@ -74,6 +74,19 @@ UIInspectorController.present { inspector in
 }
 ```
 
+### Xcode Preview integration
+To use the inspector in Xcode Previews, you can add the following modifier to your SwiftUI previews:
+
+```swift
+import SwiftUIInspector
+import SwiftUI
+
+#Preview {
+    Text("Hello, World!")
+        .previewInspector()
+}
+```
+
 You can use the following gestures:
 - **Long Press**: Start measuring dimensions or color picking. Also can be used to move the controls.
 - **Pinch**: Zoom in/out to adjust the inspector view.

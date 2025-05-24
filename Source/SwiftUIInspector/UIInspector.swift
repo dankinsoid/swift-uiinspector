@@ -833,7 +833,7 @@ struct InspectorPreview: View {
 				UIInspectorController.present()
 			}
 		}
-		.padding()
+		.previewInspector()
 	}
 }
 
