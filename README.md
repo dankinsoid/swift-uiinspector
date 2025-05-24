@@ -4,11 +4,17 @@ UIInspector is a powerful debugging tool for iOS apps that allows you to inspect
 
 ## Features
 
-- 🔍 **View Hierarchy Inspection**: Visualize your app's view hierarchy
 - 📏 **Dimension Measurement**: Measure the size and position of UI elements
+- 🔍 **View Hierarchy Inspection**: Visualize your app's view hierarchy
 - 🎨 **Color Picker**: Extract colors from any pixel in your UI
 - 📊 **Detailed Properties**: View detailed information about UI components
 - 📐 **Grid Overlay**: Enable grid lines for precise alignment
+
+This tool is particularly useful for:
+
+-  Debugging layout directly in XCode preview without needing to run the app
+- Design reviews and testing
+- As a simple alternative to Xcode's built-in inspector and other UI debugging tools
 
 ## Requirements
 
