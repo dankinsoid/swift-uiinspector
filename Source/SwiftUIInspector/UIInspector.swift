@@ -160,6 +160,7 @@ public final class UIInspector: UIView {
 			for grid in gridViews {
 				grid.backgroundColor = tintColor
 			}
+			inspector3D.tintColor = tintColor
 			updateButtons()
 			selectionView.color = tintColor
 		}
@@ -174,6 +175,7 @@ public final class UIInspector: UIView {
 		tintColor = Self.tintColor
 		backgroundColor = .clear
 		selectionView.color = tintColor
+		inspector3D.tintColor = tintColor
 		clipsToBounds = true
 	
 		snapshot.layer.magnificationFilter = .nearest

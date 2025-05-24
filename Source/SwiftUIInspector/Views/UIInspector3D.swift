@@ -91,12 +91,9 @@ final class UIInspector3D: UIView {
 		let sceneViewSize = sceneView.bounds.size
 		let targetViewSize = targetView.bounds.size
 		
-		// We want the target view to fill most of the screen, leaving some padding
-		let paddingFactor: CGFloat = 1.2 // 20% padding around the content
-		
 		// Calculate scale based on the larger dimension to ensure everything fits
-		let scaleForWidth = (targetViewSize.width * paddingFactor) / 2
-		let scaleForHeight = (targetViewSize.height * paddingFactor) / 2
+		let scaleForWidth = targetViewSize.width / 2
+		let scaleForHeight = targetViewSize.height / 2
 		
 		// Use the larger scale to ensure everything fits
 		let orthographicScale = max(scaleForWidth, scaleForHeight)
@@ -151,7 +148,7 @@ final class UIInspector3D: UIView {
 		geometry.firstMaterial?.lightingModel = .constant // Make sure it's always visible regardless of lighting
 		
 		let node = SCNNode(geometry: geometry)
-		node.addBorderOverlay()
+		node.addBorderOverlay(color: tintColor)
 		
 		// Position in 3D space - CENTER THE COMPOSITION
 		guard let targetView else {
@@ -181,7 +178,7 @@ final class UIInspector3D: UIView {
 		selectedNode = node
 		
 		// Add highlight effect
-		node.geometry?.firstMaterial?.emission.contents = UIColor.systemBlue
+		node.geometry?.firstMaterial?.emission.contents = tintColor
 		
 		// Optional: Add outline
 		if let outlineGeometry = node.geometry?.copy() as? SCNGeometry {
@@ -261,7 +258,7 @@ final class UIInspector3D: UIView {
 
 extension SCNNode {
 	
-	func addRectOverlay(color: UIColor = UIColor.systemBlue, alpha: CGFloat = 1) {
+	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 1) {
 		guard let geometry = self.geometry as? SCNPlane else { return }
 		 
 		 // Create overlay with same dimensions as the original plane
@@ -282,7 +279,7 @@ extension SCNNode {
 		 addChildNode(overlayNode)
 	}
 
-	func addBorderOverlay(color: UIColor = UIColor.systemBlue, thickness: CGFloat = 0.5) {
+	func addBorderOverlay(color: UIColor = UIInspector.tintColor, thickness: CGFloat = 0.5) {
 		guard let geometry = self.geometry as? SCNPlane else {
 			return
 		}
@@ -293,14 +290,14 @@ extension SCNNode {
 		
 		// Create 4 border rectangles
 		let borders = [
-			// Top border
-			(SCNPlane(width: width, height: t), SCNVector3(0, height/2 - t/2, 0.1)),
-			// Bottom border
-			(SCNPlane(width: width, height: t), SCNVector3(0, -height/2 + t/2, 0.1)),
-			// Left border
-			(SCNPlane(width: t, height: height), SCNVector3(-width/2 + t/2, 0, 0.1)),
-			// Right border
-			(SCNPlane(width: t, height: height), SCNVector3(width/2 - t/2, 0, 0.1))
+			// Top border - horizontal box
+			(SCNBox(width: width, height: t, length: t, chamferRadius: 0), SCNVector3(0, height/2 - t/2, 0.1)),
+			// Bottom border - horizontal box
+			(SCNBox(width: width, height: t, length: t, chamferRadius: 0), SCNVector3(0, -height/2 + t/2, 0.1)),
+			// Left border - vertical box
+			(SCNBox(width: t, height: height, length: t, chamferRadius: 0), SCNVector3(-width/2 + t/2, 0, 0.1)),
+			// Right border - vertical box
+			(SCNBox(width: t, height: height, length: t, chamferRadius: 0), SCNVector3(width/2 - t/2, 0, 0.1))
 		]
 		
 		for (i, (borderGeometry, position)) in borders.enumerated() {
