@@ -91,7 +91,28 @@ final class UIInspector3D: UIView {
 		}
 	}
 
-	func setup3DView() {
+	func animateFocus(completion: (() -> Void)? = nil) {
+		guard !isAnimating else { return }
+		isAnimating = true
+		// Use the built-in camera controller to perform smooth orbital movement
+		SCNTransaction.begin()
+		SCNTransaction.animationDuration = animationDuration
+		SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+		
+		configureCameraForTargetView()
+		
+		// Reset the animation state after completion
+		SCNTransaction.completionBlock = { [weak self] in
+			DispatchQueue.main.async {
+				self?.isAnimating = false
+				completion?()
+			}
+		}
+
+		SCNTransaction.commit()
+	}
+
+	private func setup3DView() {
 		sceneView.scene = scene
 		sceneView.allowsCameraControl = true
 		sceneView.backgroundColor = .clear
@@ -194,28 +215,6 @@ final class UIInspector3D: UIView {
 
 		SCNTransaction.commit()
 	}
-	
-	
-	func animateFocus(completion: (() -> Void)? = nil) {
-		guard !isAnimating else { return }
-		isAnimating = true
-		// Use the built-in camera controller to perform smooth orbital movement
-		SCNTransaction.begin()
-		SCNTransaction.animationDuration = animationDuration
-		SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-		
-		configureCameraForTargetView()
-		
-		// Reset the animation state after completion
-		SCNTransaction.completionBlock = { [weak self] in
-			DispatchQueue.main.async {
-				self?.isAnimating = false
-				completion?()
-			}
-		}
-
-		SCNTransaction.commit()
-	}
 
 	private func createNodeForView(_ view: UIView, depth: Double) -> SCNNode {
 		// Create geometry
@@ -258,22 +257,8 @@ final class UIInspector3D: UIView {
 	// 1. View selection and highlighting
 	private func highlightNode(_ node: SCNNode) {
 		selectedNode = node
-		
-		// Add highlight effect
-		node.geometry?.firstMaterial?.emission.contents = tintColor
-		
-		// Optional: Add outline
-		if let outlineGeometry = node.geometry?.copy() as? SCNGeometry {
-			outlineGeometry.firstMaterial?.fillMode = .lines
-			outlineGeometry.firstMaterial?.diffuse.contents = UIColor.white
-			outlineGeometry.firstMaterial?.emission.contents = UIColor.white
-			
-			let outlineNode = SCNNode(geometry: outlineGeometry)
-			outlineNode.position = node.position
-			outlineNode.scale = SCNVector3(1.02, 1.02, 1.02) // Slightly larger
-			
-			scene.rootNode.addChildNode(outlineNode)
-			highlightNodes.insert(outlineNode) // Track for cleanup
+		if let highligh = node.addRectOverlay(color: tintColor) {
+			highlightNodes.insert(highligh)
 		}
 	}
 
@@ -296,6 +281,7 @@ final class UIInspector3D: UIView {
 		
 		if let hitResult = hitResults.first {
 			selectedNode = hitResult.node
+			highlightNode(hitResult.node)
 			
 			// Find corresponding UIView
 			if let view = viewNodes[hitResult.node] {
@@ -350,8 +336,8 @@ final class UIInspector3D: UIView {
 
 extension SCNNode {
 	
-	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 1) {
-		guard let geometry = self.geometry as? SCNPlane else { return }
+	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 0.5) -> SCNNode? {
+		guard let geometry = self.geometry as? SCNPlane else { return nil }
 		 
 		 // Create overlay with same dimensions as the original plane
 		 let overlayGeometry = SCNPlane(width: geometry.width, height: geometry.height)
@@ -369,6 +355,7 @@ extension SCNNode {
 		 overlayNode.position = SCNVector3(0, 0, 0.2)
 		 
 		 addChildNode(overlayNode)
+		 return overlayNode
 	}
 
 	func addBorderOverlay(color: UIColor = UIInspector.tintColor, thickness: CGFloat = 0.5, hidden: Bool) -> Set<SCNNode> {
