@@ -13,7 +13,6 @@ final class UIInspector3D: UIView {
 	
 	init() {
 		super.init(frame: .zero)
-		print("🔴 UIInspector3D init")
 		backgroundColor = UIInspector.backgroundColor
 		setup3DView()
 		setupInteractions()
@@ -24,136 +23,132 @@ final class UIInspector3D: UIView {
 	}
 	
 	func inspect(view: UIView) {
-		print("🔴 UIInspector3D inspect called with view: \(view)")
 		targetView = view
 		update()
 	}
 	
 	override func didMoveToWindow() {
 		super.didMoveToWindow()
-		print("🔴 UIInspector3D didMoveToWindow: \(window != nil)")
-		print("🔴 UIInspector3D bounds: \(bounds)")
-		print("🔴 UIInspector3D sceneView bounds: \(sceneView.bounds)")
 		update()
 	}
 	
 	override func layoutSubviews() {
 		super.layoutSubviews()
-		print("🔴 UIInspector3D layoutSubviews: \(bounds)")
 		sceneView.frame = bounds
-		// Force update if we have a target view
-		if targetView != nil && bounds.width > 0 && bounds.height > 0 {
-			print("🔴 UIInspector3D triggering update from layoutSubviews")
-			update()
-		}
 	}
 	
 	func update() {
-		print("🔴 UIInspector3D update called")
-		print("🔴 targetView: \(targetView != nil)")
-		print("🔴 window: \(window != nil)")
-		print("🔴 bounds: \(bounds)")
-		print("🔴 sceneView bounds: \(sceneView.bounds)")
-		guard let targetView, let window else {
-			print("🔴 UIInspector3D update failed - missing targetView or window")
-			return }
-		guard bounds.width > 0 && bounds.height > 0 else {
-				print("🔴 UIInspector3D update failed - invalid bounds")
-				return
-			}
-		// Get the grouped views
-			let groupedViews = [[targetView]] + targetView.allVisibleSubviewsLayers
-			print("🔴 UIInspector3D grouped views count: \(groupedViews.count)")
-			print("🔴 UIInspector3D total views: \(groupedViews.flatMap { $0 }.count)")
-			
-		build3DRepresentation(
-			groupedViews: groupedViews
-		)
+		guard let targetView, let window, bounds.width > 0 && bounds.height > 0 else {
+			return
+		}
+		let groupedViews = [[targetView]] + targetView.allVisibleSubviewsLayers
+		build3DRepresentation(groupedViews: groupedViews)
 	}
 
 	func setup3DView() {
-		print("🔴 UIInspector3D setup3DView")
 		sceneView.scene = scene
 		sceneView.allowsCameraControl = true
 		sceneView.backgroundColor = UIInspector.backgroundColor
 		
-		// Ensure scene view is added and configured first
-		addSubview(sceneView)
-		sceneView.frame = bounds
-		
-		// Setup camera after scene view is added
-		setupCamera()
-	}
-	
-	private func setupCamera() {
-		// Setup orthographic camera (no perspective)
+		// Setup orthographic camera (will be configured properly in update())
 		let camera = SCNCamera()
 		camera.usesOrthographicProjection = true
-		camera.orthographicScale = 500
+		camera.zNear = 1
+		camera.zFar = 2000
 		
 		let cameraNode = SCNNode()
 		cameraNode.camera = camera
-		cameraNode.position = SCNVector3(0, 0, 1000)
+		cameraNode.position = SCNVector3(0, 0, 1500)
 		scene.rootNode.addChildNode(cameraNode)
 		
-		// Add lighting
+		// Add ambient lighting so everything is visible
+		let ambientLight = SCNNode()
+		ambientLight.light = SCNLight()
+		ambientLight.light?.type = .ambient
+		ambientLight.light?.intensity = 1000
+		scene.rootNode.addChildNode(ambientLight)
+		
+		// Add directional lighting
 		let lightNode = SCNNode()
 		lightNode.light = SCNLight()
-		lightNode.light?.type = .omni
-		lightNode.position = SCNVector3(0, 0, 500)
+		lightNode.light?.type = .directional
+		lightNode.light?.intensity = 1000
+		lightNode.position = SCNVector3(0, 0, 1000)
+		lightNode.look(at: SCNVector3(0, 0, 0))
 		scene.rootNode.addChildNode(lightNode)
-		print("🔴 UIInspector3D setup3DView complete")
-		print("🔴 Scene root node children: \(scene.rootNode.childNodes.count)")
+		
+		addSubview(sceneView)
+		sceneView.frame = bounds
+	}
+	
+	private func configureCameraForTargetView() {
+		guard let targetView else { return }
+		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
+			  let camera = cameraNode.camera else { return }
+		
+		// Calculate the orthographic scale to match the target view size
+		// The orthographic scale represents half the height of the view volume
+		let sceneViewSize = sceneView.bounds.size
+		let targetViewSize = targetView.bounds.size
+		
+		// We want the target view to fill most of the screen, leaving some padding
+		let paddingFactor: CGFloat = 1.2 // 20% padding around the content
+		
+		// Calculate scale based on the larger dimension to ensure everything fits
+		let scaleForWidth = (targetViewSize.width * paddingFactor) / 2
+		let scaleForHeight = (targetViewSize.height * paddingFactor) / 2
+		
+		// Use the larger scale to ensure everything fits
+		let orthographicScale = max(scaleForWidth, scaleForHeight)
+		
+		camera.orthographicScale = orthographicScale
 	}
 	
 	func build3DRepresentation(groupedViews: [[UIView]]) {
-		print("🔴 UIInspector3D build3DRepresentation called")
-		// Clear existing nodes
-		scene.rootNode.childNodes.forEach { $0.removeFromParentNode() }
+		// Clear existing nodes (but keep camera and lights)
+		scene.rootNode.childNodes.forEach {
+			if $0.camera == nil && $0.light == nil {
+				$0.removeFromParentNode()
+			}
+		}
 		viewNodes.removeAll()
 		highlightNodes.removeAll()
 		
+		// Configure camera for perfect sizing FIRST
+		configureCameraForTargetView()
 		
-		// Add a test cube to verify the scene is working
-		let testCube = SCNBox(width: 100, height: 100, length: 100, chamferRadius: 0)
-		testCube.firstMaterial?.diffuse.contents = UIColor.green
-		let testNode = SCNNode(geometry: testCube)
-		testNode.position = SCNVector3(-200, 0, 0)
-		scene.rootNode.addChildNode(testNode)
-		print("🔴 Added test cube at position: \(testNode.position)")
-		
-		
+		// Calculate bounds of all content for debugging
+		var minX: CGFloat = 0, maxX: CGFloat = 0
+		var minY: CGFloat = 0, maxY: CGFloat = 0
+		var minZ: CGFloat = 0, maxZ: CGFloat = 0
 		
 		// Process each depth level
 		var i = 0
 		for (depth, views) in groupedViews.enumerated() {
-			print("🔴 Processing depth \(depth) with \(views.count) views")
 			for (j, view) in views.enumerated() {
-				print("🔴 Creating node for view: \(view) with bounds: \(view.bounds)")
 				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
 				scene.rootNode.addChildNode(node)
 				viewNodes[node] = view
-				print("🔴 Added node at position: \(node.position)")
 			}
 			i += views.count
+		}
+		// Force scene view to update
+		DispatchQueue.main.async { [weak self] in
+			self?.sceneView.setNeedsDisplay()
 		}
 	}
 
 	private func createNodeForView(_ view: UIView, depth: Double) -> SCNNode {
-		print("🔴 Creating node for view with bounds: \(view.bounds), depth: \(depth)")
 		// Create geometry
-		
-		let geometry = SCNPlane(width: view.bounds.width, height: view.bounds.height)
+		let width = max(view.bounds.width, 1) // Ensure minimum size
+		let height = max(view.bounds.height, 1)
+		let geometry = SCNPlane(width: width, height: height)
 
 		// Apply snapshot as texture
 		let snapshot = view.snapshotImageWithoutSubviews()
 		geometry.firstMaterial?.diffuse.contents = snapshot
 		geometry.firstMaterial?.isDoubleSided = true
-		
-		// Handle transparency
-//		if view.backgroundColor?.cgColor.alpha ?? 1.0 < 1.0 {
-//			geometry.firstMaterial?.transparency = view.backgroundColor?.cgColor.alpha ?? 1.0
-//		}
+		geometry.firstMaterial?.lightingModel = .constant // Make sure it's always visible regardless of lighting
 		
 		let node = SCNNode(geometry: geometry)
 		node.addBorderOverlay()
@@ -161,7 +156,6 @@ final class UIInspector3D: UIView {
 		// Position in 3D space - CENTER THE COMPOSITION
 		guard let targetView else {
 			node.position = SCNVector3(0, 0, CGFloat(depth * 50))
-			print("🔴 No targetView, positioned at: \(node.position)")
 			return node
 		}
 		
@@ -179,7 +173,6 @@ final class UIInspector3D: UIView {
 		
 		node.position = SCNVector3(centerX, centerY, zPosition)
 		
-		print("🔴 Node positioned at: \(node.position)")
 		return node
 	}
 	
@@ -224,8 +217,6 @@ final class UIInspector3D: UIView {
 		
 		if let hitResult = hitResults.first {
 			selectedNode = hitResult.node
-//			focusCamera(on: hitResult.node)
-//			highlightNode(hitResult.node)
 			
 			// Find corresponding UIView
 			if let view = viewNodes[hitResult.node] {
@@ -270,7 +261,7 @@ final class UIInspector3D: UIView {
 
 extension SCNNode {
 	
-	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 1) {
+	func addRectOverlay(color: UIColor = UIColor.systemBlue, alpha: CGFloat = 1) {
 		guard let geometry = self.geometry as? SCNPlane else { return }
 		 
 		 // Create overlay with same dimensions as the original plane
@@ -291,7 +282,7 @@ extension SCNNode {
 		 addChildNode(overlayNode)
 	}
 
-	func addBorderOverlay(color: UIColor = UIInspector.tintColor, thickness: CGFloat = 0.5) {
+	func addBorderOverlay(color: UIColor = UIColor.systemBlue, thickness: CGFloat = 0.5) {
 		guard let geometry = self.geometry as? SCNPlane else {
 			return
 		}
