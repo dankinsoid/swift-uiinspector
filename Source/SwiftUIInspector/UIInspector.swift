@@ -528,17 +528,20 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
 	) -> Bool {
-		true
+		otherGestureRecognizer !== scroll.panGestureRecognizer && otherGestureRecognizer !== scroll.pinchGestureRecognizer
 	}
 
 	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
 		guard gestureRecognizer.numberOfTouches == 1 else {
 			return false
 		}
-		if isMeasurementEnabled || isMagnificationEnabled || isPipetteeEnabled {
-			return true
+		if controls.bounds.contains(gestureRecognizer.location(in: controls)) {
+			return controls.draggableArea.bounds.contains(gestureRecognizer.location(in: controls.draggableArea))
 		}
-		return controls.bounds.contains(gestureRecognizer.location(in: controls))
+		guard !showLayers else {
+			return isMeasurementEnabled
+		}
+		return isMeasurementEnabled || isMagnificationEnabled || isPipetteeEnabled
 	}
 }
 
@@ -566,11 +569,6 @@ private extension UIInspector {
 				feedback.selectionChanged()
 			}
 		}
-		if gesture.state.isFinal {
-			DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
-				controls.isUserInteractionEnabled = true
-			}
-		}
 		let translation = CGPoint(
 			x: location.x - draggingStart.x,
 			y: location.y - draggingStart.y
@@ -579,14 +577,11 @@ private extension UIInspector {
 			if gesture.state == .began {
 				draggingControlOffset = controlsOffset
 			}
-			if max(abs(translation.y), abs(translation.x)) > 3 {
-				controls.isUserInteractionEnabled = false
-				controlsOffset = CGPoint(
-					x: draggingControlOffset.x + translation.x,
-					y: draggingControlOffset.y + translation.y
-				)
-				updateControlsLayout()
-			}
+			controlsOffset = CGPoint(
+				x: draggingControlOffset.x + translation.x,
+				y: draggingControlOffset.y + translation.y
+			)
+			updateControlsLayout()
 			return
 		}
 		guard !isMagnificationEnabled else {
@@ -602,7 +597,7 @@ private extension UIInspector {
 				addColorPicker(at: location)
 			}
 			updateColorPicker(at: location)
-
+			
 			if gesture.state.isFinal {
 				removeColorPicker()
 				UIPasteboard.general.string = hex
@@ -818,9 +813,9 @@ private extension UIInspector {
 
 	func setShadow(for view: UIView) {
 		view.layer.shadowColor = UIInspector.foregroundColor.cgColor
-		view.layer.shadowOpacity = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? 0.14 : 0.07
+		view.layer.shadowOpacity = UIScreen.main.traitCollection.userInterfaceStyle == .dark ? 0.17 : 0.07
 		view.layer.shadowOffset = CGSize(width: 0, height: 2)
-		view.layer.shadowRadius = 4
+		view.layer.shadowRadius = 6
 	}
 }
 

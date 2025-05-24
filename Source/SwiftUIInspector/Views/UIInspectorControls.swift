@@ -5,6 +5,8 @@ final class UIInspectorControls: UIView {
 	private let padding: CGFloat = 3
 	private let buttonSize: CGFloat = 36
 	private var buttonViews: [ButtonView] = []
+	let draggableArea = UIView()
+	private let draggableImageView = UIImageView(image: UIImage(systemName: "circle.grid.3x3.fill"))
 
 	var buttons: [Button] = [] {
 		didSet {
@@ -15,11 +17,19 @@ final class UIInspectorControls: UIView {
 	init() {
 		super.init(frame: .zero)
 		backgroundColor = UIInspector.backgroundColor
+		layer.borderColor = UIInspector.foregroundColor.withAlphaComponent(0.3).cgColor
+		layer.borderWidth = 0
+		addSubview(draggableArea)
+		draggableImageView.tintColor = UIInspector.foregroundColor
+		draggableImageView.contentMode = .scaleAspectFit
+		draggableImageView.alpha = 0.2
+		draggableImageView.isUserInteractionEnabled = false
+		draggableArea.addSubview(draggableImageView)
 	}
 
 	override var intrinsicContentSize: CGSize {
 		CGSize(
-			width: CGFloat(buttons.count) * buttonSize + 4 * padding,
+			width: CGFloat(buttons.count + 1) * buttonSize + 4 * padding,
 			height: buttonSize + padding * 2
 		)
 	}
@@ -48,7 +58,7 @@ final class UIInspectorControls: UIView {
 		super.layoutSubviews()
 		layer.cornerRadius = bounds.height / 2
 		var offset: CGFloat = padding * 2
-		for button in buttonViews {
+		for button in (buttonViews) + [draggableArea] {
 			button.frame = CGRect(
 				x: offset,
 				y: padding,
@@ -57,6 +67,9 @@ final class UIInspectorControls: UIView {
 			)
 			offset += buttonSize
 		}
+		
+		let padding = draggableArea.bounds.height / 5
+		draggableImageView.frame = draggableArea.bounds.insetBy(dx: padding, dy: padding)
 	}
 
 	struct Button {
