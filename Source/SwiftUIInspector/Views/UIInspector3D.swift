@@ -304,20 +304,19 @@ final class UIInspector3D: UIView {
 		}
 	}
 	
-	private func clearSelection() {
-		 // Remove highlight from previously selected node
-		 if let selectedNode = selectedNode {
-			 selectedNode.geometry?.firstMaterial?.emission.contents = UIColor.black
-		 }
-		 
-		 // Remove any outline nodes we added
-		 highlightNodes.forEach { $0.removeFromParentNode() }
-		 highlightNodes.removeAll()
-		 
-		 // Clear selection
-		 selectedNode = nil
-	 }
-	
+	func clearSelection() {
+		// Remove highlight from previously selected node
+		if let selectedNode = selectedNode {
+			selectedNode.geometry?.firstMaterial?.emission.contents = UIColor.black
+		}
+		
+		// Remove any outline nodes we added
+		highlightNodes.forEach { $0.removeFromParentNode() }
+		highlightNodes.removeAll()
+		
+		// Clear selection
+		selectedNode = nil
+	}
 	
 	private func createGrayGradientLayer() -> CAGradientLayer {
 		let gradientLayer = CAGradientLayer()

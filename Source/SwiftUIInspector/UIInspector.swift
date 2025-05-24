@@ -439,13 +439,25 @@ private extension UIInspector {
 
 	private func didTap(on source: UIView) {
 		guard let controller else { return }
-		let hostingController = UIHostingController(
+		let hostingController = DeinitHostingController(
 			rootView: Info(view: source, custom: customInfoView)
 		)
+		hostingController.onDeinit = { [weak self] in
+			self?.inspector3D.clearSelection()
+		}
 		if #available(iOS 15.0, *) {
 			hostingController.sheetPresentationController?.detents = [.medium(), .large()]
 		}
 		controller.present(hostingController, animated: true)
+	}
+}
+
+private final class DeinitHostingController<Content: View>: UIHostingController<Content> {
+	
+	var onDeinit: (() -> Void)?
+	
+	deinit {
+		onDeinit?()
 	}
 }
 
@@ -477,9 +489,11 @@ private extension UIInspector {
 	@objc private func handleDrag(_ gesture: UILongPressGestureRecognizer) {
 		let location = gesture.location(in: self)
 		if gesture.state == .began {
-			feedback.selectionChanged()
 			draggingView = controls.bounds.contains(gesture.location(in: controls)) ? controls : nil
 			draggingStart = location
+			if draggingView != nil || !showLayers {
+				feedback.selectionChanged()
+			}
 		}
 		let translation = CGPoint(
 			x: location.x - draggingStart.x,
@@ -496,6 +510,7 @@ private extension UIInspector {
 			updateControlsLayout()
 			return
 		}
+		guard !showLayers else { return }
 		switch mode {
 		case .colorPipette:
 			let location = gesture.location(in: snapshot)
@@ -576,7 +591,8 @@ private extension UIInspector {
 				self?.showLayers.toggle()
 			},
 			UIInspectorControls.Button(
-				icon: mode == .colorPipette ? UIImage(systemName: "eyedropper")! : UIImage(systemName: "pencil.and.ruler")!
+				icon: mode == .colorPipette ? UIImage(systemName: "eyedropper")! : UIImage(systemName: "pencil.and.ruler")!,
+				isEnabled: !showLayers
 			) { [weak self] in
 				guard let self else { return }
 				if mode == .colorPipette {

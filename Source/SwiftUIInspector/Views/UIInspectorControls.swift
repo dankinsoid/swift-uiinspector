@@ -30,6 +30,8 @@ final class UIInspectorControls: UIView {
 			let buttonView = buttonViews[safe: i] ?? ButtonView()
 			buttonView.imageView.tintColor = button.isSelected ? tintColor : UIInspector.foregroundColor
 			buttonView.imageView.image = button.isSelected ? button.selectedIcon : button.unselectedIcon
+			buttonView.isEnabled = button.isEnabled
+			buttonView.imageView.alpha = button.isEnabled ? 1 : 0.5
 			buttonView.tap = button.action
 			return buttonView
 		}
@@ -58,17 +60,19 @@ final class UIInspectorControls: UIView {
 		let selectedIcon: UIImage
 		let unselectedIcon: UIImage
 		let isSelected: Bool
+		let isEnabled: Bool
 		let action: () -> Void
 
-		init(selectedIcon: UIImage, unselectedIcon: UIImage, isSelected: Bool, action: @escaping () -> Void) {
+		init(selectedIcon: UIImage, unselectedIcon: UIImage, isSelected: Bool, isEnabled: Bool = true, action: @escaping () -> Void) {
 			self.selectedIcon = selectedIcon
 			self.unselectedIcon = unselectedIcon
 			self.isSelected = isSelected
+			self.isEnabled = isEnabled
 			self.action = action
 		}
 
-		init(icon: UIImage, isSelected: Bool = false, action: @escaping () -> Void) {
-			self.init(selectedIcon: icon, unselectedIcon: icon, isSelected: isSelected, action: action)
+		init(icon: UIImage, isSelected: Bool = false, isEnabled: Bool = true, action: @escaping () -> Void) {
+			self.init(selectedIcon: icon, unselectedIcon: icon, isSelected: isSelected, isEnabled: isEnabled, action: action)
 		}
 	}
 
