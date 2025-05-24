@@ -538,9 +538,6 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		if isMeasurementEnabled || isMagnificationEnabled || isPipetteeEnabled {
 			return true
 		}
-		guard !showLayers else {
-			return false
-		}
 		return controls.bounds.contains(gestureRecognizer.location(in: controls))
 	}
 }
