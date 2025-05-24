@@ -528,7 +528,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
 	) -> Bool {
-		false
+		true
 	}
 
 	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
