@@ -140,7 +140,7 @@ public final class UIInspector: UIView {
 				}
 			} else {
 				inspector3D.animateFocus { [weak self] in
-					self?.inspector3D.isHidden = true
+//					self?.inspector3D.isHidden = true
 				}
 			}
 			updateButtons()

@@ -427,3 +427,8 @@ extension UIView {
 		return nil
 	}
 }
+
+extension Float {
+
+	var degreesToRadians: Float { self * .pi / 180 }
+}
