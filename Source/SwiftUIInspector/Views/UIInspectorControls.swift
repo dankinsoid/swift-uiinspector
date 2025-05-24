@@ -57,21 +57,21 @@ final class UIInspectorControls: UIView {
 
 	struct Button {
 
-		let selectedIcon: UIImage
-		let unselectedIcon: UIImage
+		let selectedIcon: UIImage?
+		let unselectedIcon: UIImage?
 		let isSelected: Bool
 		let isEnabled: Bool
 		let action: () -> Void
 
-		init(selectedIcon: UIImage, unselectedIcon: UIImage, isSelected: Bool, isEnabled: Bool = true, action: @escaping () -> Void) {
+		init(selectedIcon: UIImage?, unselectedIcon: UIImage?, isSelected: Bool, isEnabled: Bool = true, action: @escaping () -> Void) {
 			self.selectedIcon = selectedIcon
-			self.unselectedIcon = unselectedIcon
+			self.unselectedIcon = unselectedIcon ?? selectedIcon
 			self.isSelected = isSelected
 			self.isEnabled = isEnabled
 			self.action = action
 		}
 
-		init(icon: UIImage, isSelected: Bool = false, isEnabled: Bool = true, action: @escaping () -> Void) {
+		init(icon: UIImage?, isSelected: Bool = false, isEnabled: Bool = true, action: @escaping () -> Void) {
 			self.init(selectedIcon: icon, unselectedIcon: icon, isSelected: isSelected, isEnabled: isEnabled, action: action)
 		}
 	}

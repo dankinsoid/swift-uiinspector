@@ -112,6 +112,18 @@ public final class UIInspector: UIView {
 	private var hex = ""
 	private var isFirstAppear = true
 	private var controlsOffset: CGPoint = .zero
+	
+	private var magnificationIsEnabled = false {
+		didSet {
+			guard magnificationIsEnabled != oldValue else { return }
+			if magnificationIsEnabled {
+				enableMagnification()
+			} else {
+				disableMagnification()
+			}
+			updateButtons()
+		}
+	}
 
 	private var mode: Mode = .dimensionMeasurement {
 		didSet {
@@ -135,8 +147,18 @@ public final class UIInspector: UIView {
 			guard oldValue != showLayers else { return }
 			if showLayers {
 				if let targetView {
-					inspector3D.inspect(view: targetView, animate: true) { [self] in
-						inspector3D.isHidden = false
+					if scroll.zoomScale > 1 {
+						UIView.animate(withDuration: 0.2) { [self] in
+							scroll.zoomScale = 1
+						} completion: { [self] _ in
+							inspector3D.inspect(view: targetView, animate: true) { [self] in
+							 inspector3D.isHidden = false
+						 }
+						}
+					} else {
+						inspector3D.inspect(view: targetView, animate: true) { [self] in
+							inspector3D.isHidden = false
+						}
 					}
 				}
 			} else {
@@ -184,7 +206,7 @@ public final class UIInspector: UIView {
 		addSubview(inspector3D)
 		inspector3D.isHidden = true
 		inspector3D.notifyViewSelected = { [weak self] view in
-			self?.didTap(on: view)
+			self?.didTap(on: view, rect: nil)
 		}
 		
 		animationView.backgroundColor = .white
@@ -397,6 +419,7 @@ private extension UIInspector {
 	}
 
 	func round(point: CGPoint) -> CGPoint {
+		guard !showLayers else { return point }
 		let point = snapshot.convert(convert(point, to: snapshot).roundedToScale, to: self)
 		guard showGrid else { return point }
 		let sortedX = gridHViews
@@ -435,31 +458,45 @@ private extension UIInspector {
 }
 
 private extension UIInspector {
-
+	
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
 		guard let rect = gesture.view, let source = rects[rect] else { return }
-		didTap(on: source)
+		didTap(on: source, rect: rect)
 	}
-
-	private func didTap(on source: UIView) {
+	
+	private func didTap(on source: UIView, rect: UIView?) {
 		guard let controller else { return }
 		let hostingController = DeinitHostingController(
 			rootView: Info(view: source, custom: customInfoView)
 		)
 		hostingController.onDeinit = { [weak self] in
 			self?.inspector3D.clearSelection()
+			if let rect {
+				self?.unselect(rect: rect)
+			}
 		}
 		if #available(iOS 15.0, *) {
 			hostingController.sheetPresentationController?.detents = [.medium(), .large()]
 		}
 		controller.present(hostingController, animated: true)
+		if let rect {
+			UIView.animate(withDuration: 0.1) { [self] in
+				rect.backgroundColor = tintColor.withAlphaComponent(0.5)
+			}
+		}
+	}
+
+	private func unselect(rect: UIView) {
+		UIView.animate(withDuration: 0.1) {
+			rect.backgroundColor = .clear
+		}
 	}
 }
 
 private final class DeinitHostingController<Content: View>: UIHostingController<Content> {
-	
+
 	var onDeinit: (() -> Void)?
-	
+
 	deinit {
 		onDeinit?()
 	}
@@ -482,7 +519,6 @@ extension UIInspector: UIGestureRecognizerDelegate {
 private extension UIInspector {
 
 	func addDragGesture() {
-		let drag = UILongPressGestureRecognizer(target: self, action: #selector(handleDrag(_:)))
 		drag.minimumPressDuration = 0.2
 		drag.delaysTouchesBegan = false
 		drag.cancelsTouchesInView = true
@@ -514,6 +550,10 @@ private extension UIInspector {
 			updateControlsLayout()
 			return
 		}
+		guard !magnificationIsEnabled else {
+			drawSelectionRectGesture(gesture, location: location)
+			return
+		}
 		guard !showLayers else { return }
 		switch mode {
 		case .colorPipette:
@@ -529,32 +569,43 @@ private extension UIInspector {
 			}
 
 		case .dimensionMeasurement:
-			if gesture.state == .began {
-				addSubview(selectionView)
-				bringSubviewToFront(controls)
-				draggingStart = location
-			}
-			let startPoint = round(point: draggingStart)
-			let endPoint = round(point: location)
-			let translation = CGPoint(
-				x: endPoint.x - startPoint.x,
-				y: endPoint.y - startPoint.y
+			drawSelectionRectGesture(gesture, location: location)
+		}
+	}
+	
+	func drawSelectionRectGesture(
+		_ gesture: UILongPressGestureRecognizer,
+		location: CGPoint
+	) {
+		if gesture.state == .began {
+			addSubview(selectionView)
+			bringSubviewToFront(controls)
+			draggingStart = location
+		}
+		let startPoint = round(point: draggingStart)
+		let endPoint = round(point: location)
+		let translation = CGPoint(
+			x: endPoint.x - startPoint.x,
+			y: endPoint.y - startPoint.y
+		)
+		selectionView.frame = CGRect(
+			origin: CGPoint(
+				x: min(startPoint.x, endPoint.x),
+				y: min(startPoint.y, endPoint.y)
+			),
+			size: CGSize(
+				width: abs(translation.x),
+				height: abs(translation.y)
 			)
-			selectionView.frame = CGRect(
-				origin: CGPoint(
-					x: min(startPoint.x, endPoint.x),
-					y: min(startPoint.y, endPoint.y)
-				),
-				size: CGSize(
-					width: abs(translation.x),
-					height: abs(translation.y)
-				)
-			)
-			let selectedSize = convert(selectionView.frame, to: snapshot)
-			selectionView.label.text = selectedSize.size.inspectorDescription
-			if gesture.state.isFinal {
-				selectionView.removeFromSuperview()
+		)
+		let selectedSize = convert(selectionView.frame, to: snapshot)
+		selectionView.label.text = selectedSize.size.inspectorDescription
+		if gesture.state.isFinal {
+			if magnificationIsEnabled {
+				zoomToFitSelection()
+				magnificationIsEnabled = false
 			}
+			selectionView.removeFromSuperview()
 		}
 	}
 }
@@ -586,17 +637,30 @@ private extension UIInspector {
 
 	func updateButtons() {
 		controls.tintColor = tintColor
-		var buttons = [
+		var buttons: [UIInspectorControls.Button] = [
 			UIInspectorControls.Button(
-				selectedIcon: UIImage(systemName: "square.3.layers.3d.top.filled")!,
-				unselectedIcon: UIImage(systemName: "square.3.layers.3d")!,
+				selectedIcon: UIImage(systemName: "square.3.layers.3d.top.filled"),
+				unselectedIcon: UIImage(systemName: "square.3.layers.3d"),
 				isSelected: showLayers
 			) { [weak self] in
 				self?.showLayers.toggle()
-			},
+			}
+		]
+		// if simulator
+#if targetEnvironment(simulator)
+		buttons.append(
 			UIInspectorControls.Button(
-				icon: mode == .colorPipette ? UIImage(systemName: "eyedropper")! : UIImage(systemName: "pencil.and.ruler")!,
-				isEnabled: !showLayers
+				icon: UIImage(systemName: "arrow.up.left.and.down.right.magnifyingglass"),
+				isSelected: magnificationIsEnabled
+			) { [weak self] in
+				self?.magnificationIsEnabled.toggle()
+			}
+		)
+#endif
+		buttons += [
+			UIInspectorControls.Button(
+				icon: mode == .colorPipette ? UIImage(systemName: "eyedropper") : UIImage(systemName: "pencil.and.ruler"),
+				isEnabled: !showLayers && !magnificationIsEnabled
 			) { [weak self] in
 				guard let self else { return }
 				if mode == .colorPipette {
@@ -606,13 +670,13 @@ private extension UIInspector {
 				}
 			},
 			UIInspectorControls.Button(
-				icon: UIImage(systemName: "grid")!,
+				icon: UIImage(systemName: "grid"),
 				isSelected: showGrid
 			) { [weak self] in
 				self?.showGrid.toggle()
 			},
 			UIInspectorControls.Button(
-				icon: UIImage(systemName: "arrow.clockwise")!
+				icon: UIImage(systemName: "arrow.clockwise")
 			) { [weak self] in
 				self?.update()
 			},
@@ -620,13 +684,53 @@ private extension UIInspector {
 		if let onClose {
 			buttons.append(
 				UIInspectorControls.Button(
-					icon: UIImage(systemName: "xmark.circle.fill")!
+					icon: UIImage(systemName: "xmark.circle.fill")
 				) {
 					onClose()
 				}
 			)
 		}
 		controls.buttons = buttons
+	}
+}
+
+private extension UIInspector {
+	
+	var viewsToDisableDuringMagnification: [UIView] {
+		[inspector3D, scroll, container]
+	}
+	
+	func enableMagnification() {
+		drag.minimumPressDuration = 0
+		viewsToDisableDuringMagnification.forEach { view in
+			view.isUserInteractionEnabled = false
+		}
+	}
+	
+	func disableMagnification() {
+		drag.minimumPressDuration = 0.2
+		viewsToDisableDuringMagnification.forEach { view in
+			view.isUserInteractionEnabled = true
+		}
+	}
+
+	func zoomToFitSelection() {
+		guard !showLayers else {
+			inspector3D.zoomToFit(rect: selectionView.convert(selectionView.bounds, to: inspector3D))
+			return
+		}
+		let rect = selectionView.convert(selectionView.bounds, to: snapshot)
+		let zoomScale = min(
+			scroll.bounds.width / rect.width,
+			scroll.bounds.height / rect.height
+		)
+		UIView.animate(withDuration: 0.25, delay: 0, options: .curveEaseInOut) { [self] in
+			scroll.zoomScale = zoomScale
+			scroll.scrollRectToVisible(
+				snapshot.convert(rect, to: scroll),
+				animated: false
+			)
+		}
 	}
 }
 

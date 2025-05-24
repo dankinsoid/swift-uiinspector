@@ -113,12 +113,53 @@ final class UIInspector3D: UIView {
 		let targetPosition = SCNVector3(0, 0, initialCameraDistance)
 		let targetRotation = SCNVector3(0, 0, 0)
 		
-		animateCamera {
+		animate {
 			camera.orthographicScale = orthographicScale
 			cameraNode.position = targetPosition
 			cameraNode.eulerAngles = targetRotation
 		} completion: {
 			completion?()
+		}
+	}
+	
+	func zoomToFit(rect: CGRect) {
+		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
+			  let camera = cameraNode.camera else { return }
+		
+		// Convert rect to sceneView coordinates if needed
+		let targetRect = convert(rect, to: sceneView)
+		
+		// Calculate scale factor (inverse - smaller rect means zoom in more)
+		let scaleX = bounds.width / targetRect.width
+		let scaleY = bounds.height / targetRect.height
+		let scale = min(scaleX, scaleY) // Use minimum to ensure entire rect fits
+		
+		// Convert screen offset to world coordinates
+		let screenCenter = CGPoint(x: bounds.midX, y: bounds.midY)
+		let targetCenter = CGPoint(x: targetRect.midX, y: targetRect.midY)
+		
+		// Project screen points to world coordinates
+		let worldCenter = sceneView.unprojectPoint(SCNVector3(screenCenter.x, screenCenter.y, 0))
+		let worldTarget = sceneView.unprojectPoint(SCNVector3(targetCenter.x, targetCenter.y, 0))
+		
+		// Calculate world space offset
+		let worldOffset = SCNVector3(
+			worldTarget.x - worldCenter.x,
+			worldTarget.y - worldCenter.y,
+			0
+		)
+		
+		animate {
+			// Apply world space translation directly to camera node
+			let currentPosition = cameraNode.position
+			cameraNode.position = SCNVector3(
+				currentPosition.x + worldOffset.x,
+				currentPosition.y + worldOffset.y,
+				currentPosition.z
+			)
+			
+			// Adjust orthographic scale (divide to zoom in)
+			camera.orthographicScale /= Double(scale)
 		}
 	}
 
@@ -195,7 +236,7 @@ final class UIInspector3D: UIView {
 		cameraController.interactionMode = .orbitTurntable
 		
 		// Start a smooth programmatic orbit
-		animateCamera {
+		animate {
 			performSmoothOrbit(cameraController: cameraController, cameraNode: cameraNode)
 		}
 	}
@@ -312,13 +353,12 @@ final class UIInspector3D: UIView {
 		sceneView.addGestureRecognizer(pan2Gesture)
 	}
 	
-	func animateCamera(
-		duration: TimeInterval = 0.3,
+	func animate(
+		duration: TimeInterval = 0.25,
 		curve: CAMediaTimingFunctionName = .easeInEaseOut,
 		_ animation: () -> Void,
 		completion: (() -> Void)? = nil
 	) {
-		guard !isAnimating else { return }
 		isAnimating = true
 
 		SCNTransaction.begin()
@@ -334,23 +374,7 @@ final class UIInspector3D: UIView {
 		}
 		SCNTransaction.commit()
 	}
-	
-	func detachCameraControl() {
-		sceneView.allowsCameraControl = false
-		sceneView.defaultCameraController.interactionMode = .fly
-		sceneView.defaultCameraController.pointOfView = nil
-		sceneView.isUserInteractionEnabled = false
-	}
 
-	func attachCameraControl() {
-		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }) else { return }
-		sceneView.defaultCameraController.pointOfView = cameraNode
-		sceneView.defaultCameraController.target = sceneContentCenter()
-		sceneView.defaultCameraController.interactionMode = .orbitTurntable
-		sceneView.allowsCameraControl = true
-		sceneView.isUserInteractionEnabled = true
-	}
-	
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
 		let location = gesture.location(in: sceneView)
 		let hitResults = sceneView.hitTest(location, options: nil)
@@ -360,7 +384,9 @@ final class UIInspector3D: UIView {
 		
 		if let hitResult = hitResults.first {
 			selectedNode = hitResult.node
-			highlightNode(hitResult.node)
+			animate(duration: 0.1) {
+				highlightNode(hitResult.node)
+			}
 			
 			// Find corresponding UIView
 			if let view = viewNodes[hitResult.node] {
@@ -402,13 +428,15 @@ final class UIInspector3D: UIView {
 		)
 		gesture.setTranslation(.zero, in: sceneView)
 	}
-	
+
 	func clearSelection() {
 		// Remove highlight from previously selected node
 		if let selectedNode = selectedNode {
-			selectedNode.geometry?.firstMaterial?.emission.contents = UIColor.black
+			animate(duration: 0.1) {
+				selectedNode.geometry?.firstMaterial?.emission.contents = UIColor.black
+			}
 		}
-		
+
 		// Remove any outline nodes we added
 		highlightNodes.forEach { $0.removeFromParentNode() }
 		highlightNodes.removeAll()
