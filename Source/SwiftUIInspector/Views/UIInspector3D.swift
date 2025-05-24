@@ -9,17 +9,28 @@ final class UIInspector3D: UIView {
 	private let scene = SCNScene()
 	private var viewNodes: [SCNNode: UIView] = [:]
 	private var highlightNodes: Set<SCNNode> = []
+	private var borderOverlayNodes: Set<SCNNode> = []
 	var notifyViewSelected: ((UIView) -> Void)?
 	
 	// Animation properties
 	private var isAnimating = false
 	private let initialCameraDistance: Float = 1500
 	private let revealCameraDistance: Float = 2000
-	private let animationDuration: TimeInterval = 0.7
+	private let animationDuration: TimeInterval = 0.3
+	private lazy var gradientLayer = createGrayGradientLayer()
+	var showBorderOverlay = true {
+		didSet {
+			guard oldValue != showBorderOverlay else { return }
+			for node in borderOverlayNodes {
+				node.isHidden = !showBorderOverlay
+			}
+		}
+	}
 	
 	init() {
 		super.init(frame: .zero)
 		backgroundColor = UIInspector.backgroundColor
+		layer.insertSublayer(gradientLayer, at: 0)
 		setup3DView()
 		setupInteractions()
 	}
@@ -35,6 +46,7 @@ final class UIInspector3D: UIView {
 	
 	override func layoutSubviews() {
 		super.layoutSubviews()
+		gradientLayer.frame = bounds
 		sceneView.frame = bounds
 	}
 
@@ -52,6 +64,7 @@ final class UIInspector3D: UIView {
 		}
 		viewNodes.removeAll()
 		highlightNodes.removeAll()
+		borderOverlayNodes.removeAll()
 		
 		// Configure camera for perfect sizing FIRST
 		if animate {
@@ -70,7 +83,7 @@ final class UIInspector3D: UIView {
 		}
 		
 		// Force scene view to update
-		DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
+		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
 			whenReady?()
 			if animate {
 				animateAppear()
@@ -81,7 +94,7 @@ final class UIInspector3D: UIView {
 	func setup3DView() {
 		sceneView.scene = scene
 		sceneView.allowsCameraControl = true
-		sceneView.backgroundColor = UIInspector.backgroundColor
+		sceneView.backgroundColor = .clear
 		
 		// Setup orthographic camera (will be configured properly in update())
 		let camera = SCNCamera()
@@ -217,7 +230,7 @@ final class UIInspector3D: UIView {
 		geometry.firstMaterial?.lightingModel = .constant // Make sure it's always visible regardless of lighting
 		
 		let node = SCNNode(geometry: geometry)
-		node.addBorderOverlay(color: tintColor)
+		borderOverlayNodes.formUnion(node.addBorderOverlay(color: tintColor, hidden: !showBorderOverlay))
 		
 		// Position in 3D space - CENTER THE COMPOSITION
 		guard let targetView else {
@@ -291,25 +304,6 @@ final class UIInspector3D: UIView {
 		}
 	}
 	
-	private func focusCamera(on node: SCNNode) {
-		// Animate camera to focus on selected node
-		SCNTransaction.begin()
-		SCNTransaction.animationDuration = 0.5
-		
-		if let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }) {
-			let nodePosition = node.position
-			let offset = SCNVector3(0, 0, 200) // Distance from node
-			cameraNode.position = SCNVector3(
-				nodePosition.x + offset.x,
-				nodePosition.y + offset.y,
-				nodePosition.z + offset.z
-			)
-			cameraNode.look(at: nodePosition)
-		}
-		
-		SCNTransaction.commit()
-	}
-	
 	private func clearSelection() {
 		 // Remove highlight from previously selected node
 		 if let selectedNode = selectedNode {
@@ -323,6 +317,36 @@ final class UIInspector3D: UIView {
 		 // Clear selection
 		 selectedNode = nil
 	 }
+	
+	
+	private func createGrayGradientLayer() -> CAGradientLayer {
+		let gradientLayer = CAGradientLayer()
+		
+		let dark = UIColor(red: 0.325, green: 0.349, blue: 0.373, alpha: 1).cgColor // #53595F
+		let light = UIColor(red: 0.341, green: 0.361, blue: 0.384, alpha: 1).cgColor // #575C62
+		
+		
+		gradientLayer.colors = [
+			dark, dark,
+			light, light,
+			dark, dark,
+			light, light,
+			dark, dark
+		]
+		
+		gradientLayer.locations = [
+			0.0, 0.2,
+			0.2, 0.4,
+			0.4, 0.6,
+			0.6, 0.8,
+			0.8, 1.0
+		] as [NSNumber]
+		
+		gradientLayer.startPoint = CGPoint(x: 0, y: 1)
+		gradientLayer.endPoint = CGPoint(x: 1, y: 0)
+		
+		return gradientLayer
+	}
 }
 
 extension SCNNode {
@@ -348,9 +372,9 @@ extension SCNNode {
 		 addChildNode(overlayNode)
 	}
 
-	func addBorderOverlay(color: UIColor = UIInspector.tintColor, thickness: CGFloat = 0.5) {
+	func addBorderOverlay(color: UIColor = UIInspector.tintColor, thickness: CGFloat = 0.5, hidden: Bool) -> Set<SCNNode> {
 		guard let geometry = self.geometry as? SCNPlane else {
-			return
+			return []
 		}
 		
 		let width = geometry.width
@@ -369,6 +393,7 @@ extension SCNNode {
 			(SCNBox(width: t, height: height, length: t, chamferRadius: 0), SCNVector3(width/2 - t/2, 0, 0.1))
 		]
 		
+		var borderNodes: Set<SCNNode> = []
 		for (i, (borderGeometry, position)) in borders.enumerated() {
 			let material = SCNMaterial()
 			material.diffuse.contents = color
@@ -380,8 +405,11 @@ extension SCNNode {
 			
 			let borderNode = SCNNode(geometry: borderGeometry)
 			borderNode.position = position
+			borderNode.isHidden = hidden // Set initial visibility
 			
 			addChildNode(borderNode)
+			borderNodes.insert(borderNode)
 		}
+		return borderNodes
 	}
 }

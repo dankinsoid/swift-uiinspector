@@ -121,6 +121,7 @@ public final class UIInspector: UIView {
 	private var showGrid = true {
 		didSet {
 			gridContainer.isHidden = !showGrid
+			inspector3D.showBorderOverlay = showGrid
 			if showGrid {
 				drawGrid()
 			}
