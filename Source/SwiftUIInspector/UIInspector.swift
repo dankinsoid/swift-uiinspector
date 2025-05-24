@@ -67,13 +67,6 @@ public final class UIInspector: UIView {
 	/// - Parameter view: The view being inspected
 	/// - Returns: A SwiftUI view wrapped in `AnyView`
 	public var customInfoView: (UIView) -> AnyView = { _ in AnyView(EmptyView()) }
-
-	/// Configures the appearance of layer views in the hierarchy visualization.
-	///
-	/// By default, this sets a semi-transparent background color using the view's tint color.
-	public var layerConfiguration: (UIView) -> Void = {
-		$0.backgroundColor = $0.tintColor.withAlphaComponent(0.2)
-	}
 	
 	/// Defines the animation duration for the inspector's update.
 	public var showUpdateAnimation = true
@@ -81,7 +74,7 @@ public final class UIInspector: UIView {
 	/// Whether to hide full-screen layers in the inspector.
 	public var hideFullScreenLayers = true {
 		didSet {
-			update()
+			_update(reset: false)
 		}
 	}
 
@@ -138,19 +131,17 @@ public final class UIInspector: UIView {
 	private var showLayers = false {
 		didSet {
 			guard oldValue != showLayers else { return }
-			if showLayers, let targetView {
-				inspector3D.inspect(view: targetView)
+			if showLayers {
+				if let targetView {
+					inspector3D.inspect(view: targetView, animate: true) { [self] in
+						inspector3D.isHidden = false
+					}
+				}
+			} else {
+				inspector3D.animateFocus { [weak self] in
+					self?.inspector3D.isHidden = true
+				}
 			}
-			inspector3D.isHidden = !showLayers
-			
-//			for view in rects.keys {
-//				if hiddenRects.contains(view) {
-//					view.isHidden = true
-//				} else {
-//					view.isHidden = false
-//					view.subviews.first?.isHidden = !showLayers
-//				}
-//			}
 			updateButtons()
 		}
 	}
@@ -240,9 +231,9 @@ public final class UIInspector: UIView {
 			addSubview(animationView)
 			setNeedsDisplay()
 		}
-		
+
 		DispatchQueue.main.async {
-			self._update()
+			self._update(reset: true)
 		}
 	}
 
@@ -273,17 +264,19 @@ extension UIInspector: UIScrollViewDelegate {
 
 private extension UIInspector {
 
-	func _update() {
+	func _update(reset: Bool = false) {
 		guard let targetView, let window else { return }
-		feedback.selectionChanged()
 
-		scroll.zoomScale = 1
-		scroll.frame = bounds
-		container.frame = scroll.bounds
-		gridContainer.frame = bounds
-		inspector3D.frame = bounds
+		if reset {
+			feedback.selectionChanged()
+			scroll.zoomScale = 1
+			scroll.frame = bounds
+			container.frame = scroll.bounds
+			gridContainer.frame = bounds
+			inspector3D.frame = bounds
+		}
 		if !inspector3D.isHidden {
-			inspector3D.update()
+			inspector3D.update(animate: reset)
 		}
 
 		rects.removeAll()
@@ -304,17 +297,9 @@ private extension UIInspector {
 				}
 				let view = UIView(frame: frame)
 				view.backgroundColor = .clear
-				let viewVisual = UIView(frame: view.bounds)
-				viewVisual.isUserInteractionEnabled = false
-				view.addSubview(viewVisual)
-				// view.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, CGFloat(deep) * 10)
-				// view.layer.isDoubleSided = true
-//				viewVisual.tintColor = tintColor
-//				layerConfiguration(viewVisual)
 				let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
-//				viewVisual.isHidden = !showLayers
 				rects[view] = subview
 			}
 		}
@@ -322,15 +307,8 @@ private extension UIInspector {
 		if showGrid {
 			drawGrid()
 		}
-//		controls.transform3D = CATransform3DTranslate(CATransform3DIdentity, 0, 0, 1000)
-//		scroll.layer.sublayerTransform.m34 = -1 / 500
-//		container.layer.sublayerTransform.m34 = -1 / 500
-//		layer.sublayerTransform.m34 = -1 / 500
-//		var transform = CATransform3DIdentity
-//		transform.m34 = -1 / 500
-//		scroll.transform3D = CATransform3DRotate(transform, .pi / 2.5, 1, 0, 0)
 
-		if showUpdateAnimation {
+		if showUpdateAnimation, reset {
 			DispatchQueue.main.async { [self] in
 				UIView.animate(withDuration: 0.5) {
 					animationView.alpha = 0
@@ -457,15 +435,11 @@ private extension UIInspector {
 		guard let rect = gesture.view, let source = rects[rect] else { return }
 		didTap(on: source)
 	}
-	
+
 	private func didTap(on source: UIView) {
 		guard let controller else { return }
 		let hostingController = UIHostingController(
-			rootView: Info(view: source, custom: customInfoView, showHide: showLayers) { [weak self] in
-//				rect.isHidden = true
-//				self?.hiddenRects.insert(rect)
-//				controller.presentedViewController?.dismiss(animated: true)
-			}
+			rootView: Info(view: source, custom: customInfoView)
 		)
 		if #available(iOS 15.0, *) {
 			hostingController.sheetPresentationController?.detents = [.medium(), .large()]

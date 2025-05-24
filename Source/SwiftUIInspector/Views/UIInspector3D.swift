@@ -12,9 +12,10 @@ final class UIInspector3D: UIView {
 	var notifyViewSelected: ((UIView) -> Void)?
 	
 	// Animation properties
-	private var hasAnimatedInitialReveal = false
+	private var isAnimating = false
 	private let initialCameraDistance: Float = 1500
 	private let revealCameraDistance: Float = 2000
+	private let animationDuration: TimeInterval = 0.7
 	
 	init() {
 		super.init(frame: .zero)
@@ -27,28 +28,54 @@ final class UIInspector3D: UIView {
 		fatalError("init(coder:) has not been implemented")
 	}
 	
-	func inspect(view: UIView) {
+	func inspect(view: UIView, animate: Bool = false, whenReady: (() -> Void)? = nil) {
 		targetView = view
-		hasAnimatedInitialReveal = false // Reset animation flag for new view
-		update()
-	}
-	
-	override func didMoveToWindow() {
-		super.didMoveToWindow()
-		update()
+		update(animate: animate, whenReady: whenReady)
 	}
 	
 	override func layoutSubviews() {
 		super.layoutSubviews()
 		sceneView.frame = bounds
 	}
-	
-	func update() {
+
+	func update(animate: Bool = false, whenReady: (() -> Void)? = nil) {
 		guard let targetView, let window, bounds.width > 0 && bounds.height > 0 else {
 			return
 		}
 		let groupedViews = [[targetView]] + targetView.allVisibleSubviewsLayers
-		build3DRepresentation(groupedViews: groupedViews)
+
+		// Clear existing nodes (but keep camera and lights)
+		scene.rootNode.childNodes.forEach {
+			if $0.camera == nil && $0.light == nil {
+				$0.removeFromParentNode()
+			}
+		}
+		viewNodes.removeAll()
+		highlightNodes.removeAll()
+		
+		// Configure camera for perfect sizing FIRST
+		if animate {
+			configureCameraForTargetView()
+		}
+
+		// Process each depth level
+		var i = 0
+		for (depth, views) in groupedViews.enumerated() {
+			for (j, view) in views.enumerated() {
+				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
+				scene.rootNode.addChildNode(node)
+				viewNodes[node] = view
+			}
+			i += views.count
+		}
+		
+		// Force scene view to update
+		DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [self] in
+			whenReady?()
+			if animate {
+				animateAppear()
+			}
+		}
 	}
 
 	func setup3DView() {
@@ -103,95 +130,78 @@ final class UIInspector3D: UIView {
 		
 		// Use the larger scale to ensure everything fits
 		let orthographicScale = max(scaleForWidth, scaleForHeight)
-		
+
 		camera.orthographicScale = orthographicScale
 
 		// Reset camera position for perfect initial alignment
 		cameraNode.position = SCNVector3(0, 0, initialCameraDistance)
 		cameraNode.eulerAngles = SCNVector3(0, 0, 0) // Reset any rotation
 	}
-	
-	private func animateCamera3DReveal() {
-		guard !hasAnimatedInitialReveal else { return }
+
+	private func animateAppear() {
+		guard !isAnimating else { return }
 		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }) else { return }
 		
-		hasAnimatedInitialReveal = true
+		isAnimating = true
 		
-		// Disable camera control during animation
-		sceneView.allowsCameraControl = false
+		// Use the built-in camera controls to smoothly orbit the scene
+		let targetPoint = SCNVector3(0, 0, 0) // Center of our composition
 		
-		// Wait a brief moment to let user see the perfect alignment
-		DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [self] in
-			SCNTransaction.begin()
-			SCNTransaction.animationDuration = 1.2
-			SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-			
-			// Calculate orbital position around the center (0,0,0)
-			let targetPoint = SCNVector3(0, 0, 0) // Center of our composition
-			let distance: Float = self.revealCameraDistance
-			
-			// Orbital angles for nice 3D perspective
-			let angleX: Float = 0.3 // Tilt up slightly (about 17 degrees)
-			let angleY: Float = 0.4  // Rotate around Y axis (about 23 degrees)
-			
-			// Calculate camera position in orbit around target
-			let x = distance * sin(angleY) * cos(angleX)
-			let y = distance * sin(angleX)
-			let z = distance * cos(angleY) * cos(angleX)
-			
-			// Position camera in orbital position
-			cameraNode.position = SCNVector3(x, y, z)
-			cameraNode.camera?.orthographicScale *= 1.2
-			
-			// Make camera look at the center of our composition
-			cameraNode.look(at: targetPoint)
-			
-			SCNTransaction.completionBlock = {
-				// Re-enable camera control after animation
-				DispatchQueue.main.async {
-					self.sceneView.allowsCameraControl = true
-				}
-			}
-			
-			SCNTransaction.commit()
-		}
+		let cameraController = self.sceneView.defaultCameraController
+		// Set the point of interest to the center of our scene
+		cameraController.pointOfView = cameraNode
+		cameraController.target = targetPoint
+		
+		// Enable automatic camera and set it to orbit mode
+		cameraController.interactionMode = .orbitTurntable
+		
+		// Start a smooth programmatic orbit
+		self.performSmoothOrbit(cameraController: cameraController, cameraNode: cameraNode)
 	}
 	
-	func build3DRepresentation(groupedViews: [[UIView]]) {
-		// Clear existing nodes (but keep camera and lights)
-		scene.rootNode.childNodes.forEach {
-			if $0.camera == nil && $0.light == nil {
-				$0.removeFromParentNode()
-			}
-		}
-		viewNodes.removeAll()
-		highlightNodes.removeAll()
+	private func performSmoothOrbit(cameraController: SCNCameraController, cameraNode: SCNNode) {
+		// Use the built-in camera controller to perform smooth orbital movement
+		SCNTransaction.begin()
+		SCNTransaction.animationDuration = animationDuration
+		SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
 		
-		// Configure camera for perfect sizing FIRST
+		// Let the built-in controller handle the orbital movement
+		// We just need to trigger it with some rotation values
+		let orbitX: Float = -15 // Tilt down
+		let orbitY: Float = 20  // Rotate around
+		
+		// Apply the rotation through the controller's built-in mechanism
+		cameraController.rotateBy(x: orbitY, y: orbitX)
+		cameraNode.camera?.orthographicScale *= 1.2
+		
+		// Reset the animation state after completion
+		SCNTransaction.completionBlock = { [weak self] in
+			self?.isAnimating = false
+		}
+
+		SCNTransaction.commit()
+	}
+	
+	
+	func animateFocus(completion: (() -> Void)? = nil) {
+		guard !isAnimating else { return }
+		isAnimating = true
+		// Use the built-in camera controller to perform smooth orbital movement
+		SCNTransaction.begin()
+		SCNTransaction.animationDuration = animationDuration
+		SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+		
 		configureCameraForTargetView()
 		
-		// Calculate bounds of all content for debugging
-		var minX: CGFloat = 0, maxX: CGFloat = 0
-		var minY: CGFloat = 0, maxY: CGFloat = 0
-		var minZ: CGFloat = 0, maxZ: CGFloat = 0
-		
-		// Process each depth level
-		var i = 0
-		for (depth, views) in groupedViews.enumerated() {
-			for (j, view) in views.enumerated() {
-				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
-				scene.rootNode.addChildNode(node)
-				viewNodes[node] = view
+		// Reset the animation state after completion
+		SCNTransaction.completionBlock = { [weak self] in
+			DispatchQueue.main.async {
+				self?.isAnimating = false
+				completion?()
 			}
-			i += views.count
 		}
-		
-		// Force scene view to update
-		DispatchQueue.main.async { [weak self] in
-			self?.sceneView.setNeedsDisplay()
-			// Start the 3D reveal animation after the scene is built
-			self?.animateCamera3DReveal()
-		}
+
+		SCNTransaction.commit()
 	}
 
 	private func createNodeForView(_ view: UIView, depth: Double) -> SCNNode {

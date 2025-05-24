@@ -6,19 +6,11 @@ extension UIInspector {
 
 		let view: UIView
 		let custom: (UIView) -> AnyView
-		let showHide: Bool
-		let onHide: () -> Void
 
 		var body: some View {
 			let info = (view as? UIInspectorInfoConvertable)?.inspectorInfo ?? view.defaultInspectorInfo
 			NavigationView {
 				List {
-					if showHide {
-						Button("Hide Layer") {
-							onHide()
-						}
-						.foregroundColor(.red)
-					}
 					ForEach(Array(info.enumerated()), id: \.offset) { _, section in
 						SwiftUI.Section {
 							ForEach(Array(section.cells.enumerated()), id: \.offset) { _, cell in
