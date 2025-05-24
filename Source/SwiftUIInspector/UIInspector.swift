@@ -532,7 +532,16 @@ extension UIInspector: UIGestureRecognizerDelegate {
 	}
 
 	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-		gestureRecognizer.numberOfTouches == 1
+		guard gestureRecognizer.numberOfTouches == 1 else {
+			return false
+		}
+		if isMeasurementEnabled || isMagnificationEnabled || isPipetteeEnabled {
+			return true
+		}
+		guard !showLayers else {
+			return false
+		}
+		return controls.bounds.contains(gestureRecognizer.location(in: controls))
 	}
 }
 
@@ -575,7 +584,6 @@ private extension UIInspector {
 			}
 			if max(abs(translation.y), abs(translation.x)) > 3 {
 				controls.isUserInteractionEnabled = false
-				print("Dragging controls")
 				controlsOffset = CGPoint(
 					x: draggingControlOffset.x + translation.x,
 					y: draggingControlOffset.y + translation.y
