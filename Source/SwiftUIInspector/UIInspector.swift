@@ -131,7 +131,9 @@ public final class UIInspector: UIView {
 			if isPipetteeEnabled {
 				isMeasurementEnabled = false
 			}
+#if targetEnvironment(simulator)
 			scroll.isScrollEnabled = !isPipetteeEnabled
+#endif
 			updateButtons()
 		}
 	}
@@ -142,7 +144,9 @@ public final class UIInspector: UIView {
 			if isMeasurementEnabled {
 				isPipetteeEnabled = false
 			}
+#if targetEnvironment(simulator)
 			scroll.isScrollEnabled = !isMeasurementEnabled
+#endif
 			updateButtons()
 		}
 	}
@@ -535,12 +539,16 @@ extension UIInspector: UIGestureRecognizerDelegate {
 private extension UIInspector {
 
 	func addDragGesture() {
+		#if targetEnvironment(simulator)
 		drag.minimumPressDuration = 0
-		drag.delaysTouchesBegan = true
+		scroll.isScrollEnabled = false
+		#else
+		drag.minimumPressDuration = 0.1
+		#endif
 		drag.cancelsTouchesInView = false
+		drag.delaysTouchesBegan = false
 		drag.delegate = self
 		addGestureRecognizer(drag)
-		scroll.isScrollEnabled = false
 	}
 
 	@objc private func handleDrag(_ gesture: UILongPressGestureRecognizer) {
@@ -567,6 +575,7 @@ private extension UIInspector {
 			}
 			if max(abs(translation.y), abs(translation.x)) > 3 {
 				controls.isUserInteractionEnabled = false
+				print("Dragging controls")
 				controlsOffset = CGPoint(
 					x: draggingControlOffset.x + translation.x,
 					y: draggingControlOffset.y + translation.y
@@ -669,7 +678,6 @@ private extension UIInspector {
 				self?.showLayers.toggle()
 			}
 		]
-		// if simulator
 #if targetEnvironment(simulator)
 		buttons.append(
 			UIInspectorControls.Button(
@@ -682,7 +690,8 @@ private extension UIInspector {
 #endif
 		buttons += [
 			UIInspectorControls.Button(
-				icon: UIImage(systemName: "eyedropper"),
+				selectedIcon: UIImage(systemName: "eyedropper.full"),
+				unselectedIcon: UIImage(systemName: "eyedropper"),
 				isSelected: isPipetteeEnabled,
 				isEnabled: !showLayers && !isMagnificationEnabled
 			) { [weak self] in
@@ -690,7 +699,8 @@ private extension UIInspector {
 				isPipetteeEnabled.toggle()
 			},
 			UIInspectorControls.Button(
-				icon: UIImage(systemName: "pencil.and.ruler"),
+				selectedIcon: UIImage(systemName: "pencil.and.ruler.fill"),
+				unselectedIcon: UIImage(systemName: "pencil.and.ruler"),
 				isSelected: isMeasurementEnabled,
 				isEnabled: !showLayers && !isMagnificationEnabled
 			) { [weak self] in
