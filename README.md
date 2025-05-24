@@ -84,9 +84,8 @@ The inspector provides several controls:
 
 ## TODO
 
-- **3D Rotation**: The 3D rotation feature is not implemented yet. This will be needed to properly visualize and interact with overlapping views in the hierarchy.
-- **Better SwiftUI Integration**: While the current implementation works for SwiftUI views (for now), there are still some limitations.
 - **macOS Support**: Currently, the inspector is designed for iOS. Future versions may include support for macOS.
+- **CATransform3D Support**: Enhancements to support 3D Z-axis transformations in the inspector.
 
 ## License
 
