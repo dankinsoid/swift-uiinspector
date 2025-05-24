@@ -481,7 +481,7 @@ private extension UIInspector {
 		controller.present(hostingController, animated: true)
 		if let rect {
 			UIView.animate(withDuration: 0.1) { [self] in
-				rect.backgroundColor = tintColor.withAlphaComponent(0.5)
+				rect.backgroundColor = tintColor.withAlphaComponent(0.2)
 			}
 		}
 	}
