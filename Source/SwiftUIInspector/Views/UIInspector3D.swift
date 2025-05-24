@@ -11,6 +11,11 @@ final class UIInspector3D: UIView {
 	private var highlightNodes: Set<SCNNode> = []
 	var notifyViewSelected: ((UIView) -> Void)?
 	
+	// Animation properties
+	private var hasAnimatedInitialReveal = false
+	private let initialCameraDistance: Float = 1500
+	private let revealCameraDistance: Float = 2000
+	
 	init() {
 		super.init(frame: .zero)
 		backgroundColor = UIInspector.backgroundColor
@@ -24,6 +29,7 @@ final class UIInspector3D: UIView {
 	
 	func inspect(view: UIView) {
 		targetView = view
+		hasAnimatedInitialReveal = false // Reset animation flag for new view
 		update()
 	}
 	
@@ -54,11 +60,11 @@ final class UIInspector3D: UIView {
 		let camera = SCNCamera()
 		camera.usesOrthographicProjection = true
 		camera.zNear = 1
-		camera.zFar = 2000
+		camera.zFar = 3000
 		
 		let cameraNode = SCNNode()
 		cameraNode.camera = camera
-		cameraNode.position = SCNVector3(0, 0, 1500)
+		cameraNode.position = SCNVector3(0, 0, initialCameraDistance)
 		scene.rootNode.addChildNode(cameraNode)
 		
 		// Add ambient lighting so everything is visible
@@ -99,6 +105,56 @@ final class UIInspector3D: UIView {
 		let orthographicScale = max(scaleForWidth, scaleForHeight)
 		
 		camera.orthographicScale = orthographicScale
+
+		// Reset camera position for perfect initial alignment
+		cameraNode.position = SCNVector3(0, 0, initialCameraDistance)
+		cameraNode.eulerAngles = SCNVector3(0, 0, 0) // Reset any rotation
+	}
+	
+	private func animateCamera3DReveal() {
+		guard !hasAnimatedInitialReveal else { return }
+		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }) else { return }
+		
+		hasAnimatedInitialReveal = true
+		
+		// Disable camera control during animation
+		sceneView.allowsCameraControl = false
+		
+		// Wait a brief moment to let user see the perfect alignment
+		DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [self] in
+			SCNTransaction.begin()
+			SCNTransaction.animationDuration = 1.2
+			SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+			
+			// Calculate orbital position around the center (0,0,0)
+			let targetPoint = SCNVector3(0, 0, 0) // Center of our composition
+			let distance: Float = self.revealCameraDistance
+			
+			// Orbital angles for nice 3D perspective
+			let angleX: Float = 0.3 // Tilt up slightly (about 17 degrees)
+			let angleY: Float = 0.4  // Rotate around Y axis (about 23 degrees)
+			
+			// Calculate camera position in orbit around target
+			let x = distance * sin(angleY) * cos(angleX)
+			let y = distance * sin(angleX)
+			let z = distance * cos(angleY) * cos(angleX)
+			
+			// Position camera in orbital position
+			cameraNode.position = SCNVector3(x, y, z)
+			cameraNode.camera?.orthographicScale *= 1.2
+			
+			// Make camera look at the center of our composition
+			cameraNode.look(at: targetPoint)
+			
+			SCNTransaction.completionBlock = {
+				// Re-enable camera control after animation
+				DispatchQueue.main.async {
+					self.sceneView.allowsCameraControl = true
+				}
+			}
+			
+			SCNTransaction.commit()
+		}
 	}
 	
 	func build3DRepresentation(groupedViews: [[UIView]]) {
@@ -129,9 +185,12 @@ final class UIInspector3D: UIView {
 			}
 			i += views.count
 		}
+		
 		// Force scene view to update
 		DispatchQueue.main.async { [weak self] in
 			self?.sceneView.setNeedsDisplay()
+			// Start the 3D reveal animation after the scene is built
+			self?.animateCamera3DReveal()
 		}
 	}
 
