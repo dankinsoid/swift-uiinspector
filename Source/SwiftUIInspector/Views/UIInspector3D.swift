@@ -16,7 +16,7 @@ final class UIInspector3D: UIView {
 	private var isAnimating = false
 	private let initialCameraDistance: Float = 1500
 	private let revealCameraDistance: Float = 2000
-	private lazy var gradientLayer = createGrayGradientLayer()
+	private let background = UISceneBackground()
 	var showBorderOverlay = true {
 		didSet {
 			guard oldValue != showBorderOverlay else { return }
@@ -25,11 +25,18 @@ final class UIInspector3D: UIView {
 			}
 		}
 	}
-	
+
+	override var tintColor: UIColor! {
+		didSet {
+			background.tintColor = tintColor
+		}
+	}
+
 	init() {
 		super.init(frame: .zero)
 		backgroundColor = UIInspector.backgroundColor
-		layer.insertSublayer(gradientLayer, at: 0)
+		addSubview(background)
+		background.tintColor = tintColor
 		setup3DView()
 		setupInteractions()
 	}
@@ -45,12 +52,12 @@ final class UIInspector3D: UIView {
 	
 	override func layoutSubviews() {
 		super.layoutSubviews()
-		gradientLayer.frame = bounds
+		background.frame = bounds
 		sceneView.frame = bounds
 	}
 
 	func update(animate: Bool = false, whenReady: (() -> Void)? = nil) {
-		guard let targetView, let window, bounds.width > 0 && bounds.height > 0 else {
+		guard let targetView, window != nil, bounds.width > 0 && bounds.height > 0 else {
 			return
 		}
 		let groupedViews = [[targetView]] + targetView.allVisibleSubviewsLayers
@@ -72,7 +79,7 @@ final class UIInspector3D: UIView {
 
 		// Process each depth level
 		var i = 0
-		for (depth, views) in groupedViews.enumerated() {
+		for views in groupedViews {
 			for (j, view) in views.enumerated() {
 				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
 				scene.rootNode.addChildNode(node)
@@ -91,7 +98,6 @@ final class UIInspector3D: UIView {
 	}
 
 	func animateFocus(completion: (() -> Void)? = nil) {
-		print("animateFocus")
 		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
 			  let camera = cameraNode.camera,
 			  let targetView else { return }
@@ -147,14 +153,12 @@ final class UIInspector3D: UIView {
 	}
 	
 	private func configureCameraForTargetView(from function: String = #function) {
-		print("configureCameraForTargetView from \(function)")
 		guard let targetView else { return }
 		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
 			  let camera = cameraNode.camera else { return }
 		
 		// Calculate the orthographic scale to match the target view size
 		// The orthographic scale represents half the height of the view volume
-		let sceneViewSize = sceneView.bounds.size
 		let targetViewSize = targetView.bounds.size
 		
 		// Calculate scale based on the larger dimension to ensure everything fits
@@ -172,7 +176,6 @@ final class UIInspector3D: UIView {
 	}
 
 	private func animateAppear() {
-		print("animateAppear")
 		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }) else { return }
 		
 		// Use the built-in camera controls to smoothly orbit the scene
@@ -408,35 +411,6 @@ final class UIInspector3D: UIView {
 		// Clear selection
 		selectedNode = nil
 	}
-	
-	private func createGrayGradientLayer() -> CAGradientLayer {
-		let gradientLayer = CAGradientLayer()
-		
-		let dark = UIColor(red: 0.325, green: 0.349, blue: 0.373, alpha: 1).cgColor // #53595F
-		let light = UIColor(red: 0.341, green: 0.361, blue: 0.384, alpha: 1).cgColor // #575C62
-		
-		
-		gradientLayer.colors = [
-			dark, dark,
-			light, light,
-			dark, dark,
-			light, light,
-			dark, dark
-		]
-		
-		gradientLayer.locations = [
-			0.0, 0.2,
-			0.2, 0.4,
-			0.4, 0.6,
-			0.6, 0.8,
-			0.8, 1.0
-		] as [NSNumber]
-		
-		gradientLayer.startPoint = CGPoint(x: 0, y: 1)
-		gradientLayer.endPoint = CGPoint(x: 1, y: 0)
-		
-		return gradientLayer
-	}
 }
 
 extension SCNNode {
@@ -485,7 +459,7 @@ extension SCNNode {
 		]
 		
 		var borderNodes: Set<SCNNode> = []
-		for (i, (borderGeometry, position)) in borders.enumerated() {
+		for (borderGeometry, position) in borders {
 			let material = SCNMaterial()
 			material.diffuse.contents = color
 			material.lightingModel = .constant

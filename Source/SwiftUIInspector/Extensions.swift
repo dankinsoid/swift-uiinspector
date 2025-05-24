@@ -91,7 +91,6 @@ extension UIView {
 			
 			// Save current state
 			let originalSublayers = layer.sublayers
-			let originalBackgroundColor = layer.backgroundColor
 			
 			// Remove sublayers
 			layer.sublayers = nil
@@ -269,7 +268,7 @@ extension UIImage {
 			red = components[0]
 			green = components[1]
 			blue = components[2]
-		default:
+		@unknown default:
 			return .clear
 		}
 

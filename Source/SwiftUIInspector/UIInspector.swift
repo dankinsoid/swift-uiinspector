@@ -78,6 +78,7 @@ public final class UIInspector: UIView {
 		}
 	}
 
+	private let background = UISceneBackground()
 	private let scroll = UIScrollView()
 	private let container = UIView()
 	private let snapshot = UIImageView()
@@ -155,6 +156,7 @@ public final class UIInspector: UIView {
 			inspector3D.tintColor = tintColor
 			updateButtons()
 			selectionView.color = tintColor
+			background.tintColor = tintColor
 		}
 	}
 
@@ -164,8 +166,10 @@ public final class UIInspector: UIView {
 	/// once added to the view hierarchy.
 	public init() {
 		super.init(frame: .zero)
+		addSubview(background)
 		tintColor = Self.tintColor
 		backgroundColor = .clear
+		background.tintColor = tintColor
 		selectionView.color = tintColor
 		inspector3D.tintColor = tintColor
 		clipsToBounds = true
@@ -240,6 +244,7 @@ public final class UIInspector: UIView {
 
 	override public func layoutSubviews() {
 		super.layoutSubviews()
+		background.frame = bounds
 		updateControlsLayout()
 	}
 }
@@ -266,7 +271,7 @@ extension UIInspector: UIScrollViewDelegate {
 private extension UIInspector {
 
 	func _update(reset: Bool = false) {
-		guard let targetView, let window else { return }
+		guard let targetView, window != nil else { return }
 
 		if reset {
 			feedback.selectionChanged()
@@ -311,9 +316,9 @@ private extension UIInspector {
 
 		if showUpdateAnimation, reset {
 			DispatchQueue.main.async { [self] in
-				UIView.animate(withDuration: 0.5) {
+				UIView.animate(withDuration: 0.5) { [self] in
 					animationView.alpha = 0
-				} completion: { _ in
+				} completion: { [self] _ in
 					animationView.removeFromSuperview()
 				}
 			}
@@ -617,7 +622,7 @@ private extension UIInspector {
 			buttons.append(
 				UIInspectorControls.Button(
 					icon: UIImage(systemName: "xmark.circle.fill")!
-				) { [weak self] in
+				) {
 					onClose()
 				}
 			)
