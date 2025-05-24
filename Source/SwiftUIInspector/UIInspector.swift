@@ -820,23 +820,16 @@ private extension UIInspector {
 	}
 }
 
-struct InspectorPreview: View {
-
-	var body: some View {
-		VStack(spacing: 14) {
-			Image(systemName: "globe")
-				.imageScale(.large)
-				.foregroundColor(.blue)
-			Text("Hello, world!")
-
-			Button("Show Inspector") {
-				UIInspectorController.present()
-			}
-		}
-		.previewInspector()
-	}
-}
-
 #Preview {
-	InspectorPreview()
+	VStack(spacing: 14) {
+		Image(systemName: "globe")
+			.imageScale(.large)
+			.foregroundColor(.blue)
+		Text("Hello, world!")
+		
+		Button("Show Inspector") {
+			UIInspectorController.present()
+		}
+	}
+	.previewInspector()
 }
