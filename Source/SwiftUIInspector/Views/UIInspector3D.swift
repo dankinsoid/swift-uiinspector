@@ -348,6 +348,7 @@ final class UIInspector3D: UIView {
 		sceneView.addGestureRecognizer(tapGesture)
 		
 		let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
+		panGesture.maximumNumberOfTouches = 1
 		sceneView.addGestureRecognizer(panGesture)
 
 		let pinchGesture = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
@@ -393,7 +394,6 @@ final class UIInspector3D: UIView {
 				y: view.bounds.midY - CGFloat(hitResult.localCoordinates.y)
 			)
 			let point = view.convert(localHit, to: targetView)
-//			print(view.frame.size, localHit, point, sceneView.convert(point, to: source))
 			return sceneView.convert(point, to: source)
 		}
 		return nil

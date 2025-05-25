@@ -325,7 +325,7 @@ private extension UIInspector {
 		hiddenRects.removeAll()
 
 		container.subviews.forEach { $0.removeFromSuperview() }
-		let viewForSnapshot = viewForSnapshot(of: targetView)
+		let viewForSnapshot = targetView//viewForSnapshot(of: targetView)
 		snapshot.image = viewForSnapshot.snapshotImage()
 		let frame = viewForSnapshot.convert(viewForSnapshot.bounds, to: container)
 		snapshot.frame = frame
