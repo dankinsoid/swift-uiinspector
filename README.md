@@ -36,21 +36,9 @@ dependencies: [
 
 Or add it directly in Xcode using File > Add Packages...
 
-## Screenshots
+## Example
 
-Here are some screenshots showing the main features of SwiftUIInspector:
-
-### Measurement Tool with Grid
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/selection.grid.PNG" width="300">
-
-### View Hierarchy Layers
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/inspector3d.PNG" width="300">
-
-### Color Picker Tool
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/pipette.PNG" width="300">
-
-### View Info
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/info3d.PNG" width="300">
+<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.gif" width="300">
 
 ## Usage
 
