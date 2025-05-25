@@ -478,12 +478,12 @@ private extension UIInspector {
 			for grid in gridViews {
 				switch grid.axis {
 				case .horizontal:
-					if grid.grid == points[0].x || grid.grid == points[1].x {
+					if points.contains(where: { isSameGrid(grid.grid, $0.x) }) {
 						highlightedGrid.insert(grid)
 						updateWidth(grid: grid, width: highlightedWidth)
 					}
 				case .vertical:
-					if grid.grid == points[0].y || grid.grid == points[1].y {
+					if points.contains(where: { isSameGrid(grid.grid, $0.y) }) {
 						highlightedGrid.insert(grid)
 						updateWidth(grid: grid, width: highlightedWidth)
 					}
@@ -493,6 +493,10 @@ private extension UIInspector {
 		for grid in currentHighlighted.subtracting(highlightedGrid) {
 			updateWidth(grid: grid, width: gridWidth)
 		}
+	}
+	
+	func isSameGrid(_ value1: CGFloat, _ value2: CGFloat) -> Bool {
+		abs(value1 - value2) < 1 / UIScreen.main.scale
 	}
 	
 	func updateWidth(grid: UIGrid, width: CGFloat) {
