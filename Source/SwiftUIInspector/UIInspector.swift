@@ -93,7 +93,7 @@ public final class UIInspector: UIView {
 	private var hiddenRects: Set<UIView> = []
 
 	private let gridContainer = UIView()
-	private let gridWidth: CGFloat = 0.5
+	private let gridWidth: CGFloat = 2.0 / UIScreen.main.scale
 	private var highlightedGrid: Set<UIGrid> = []
 	private var gridViews: [UIGrid] = []
 
@@ -432,14 +432,14 @@ private extension UIInspector {
 
 	func round(point: CGPoint) -> CGPoint {
 		guard !showLayers, !isMagnificationEnabled else { return point }
-		let point = snapshot.convert(convert(point, to: snapshot).roundedToScale, to: self)
-		guard showGrid else { return point }
+		let point = convert(point, to: snapshot).roundedToScale
+		guard showGrid else { return snapshot.convert(point, to: self) }
 		let sortedX = gridViews
 			.filter { isVisible($0) && $0.axis == .horizontal }
 			.sorted {
-				abs($0.frame.midX - point.x) < abs($1.frame.midX - point.x)
+				abs($0.grid - point.x) < abs($1.grid - point.x)
 			}
-		let closestX = sortedX.first?.frame.midX ?? point.x
+		let closestX = sortedX.first?.grid ?? point.x
 //		sortedX
 //			.first {
 //				min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0
@@ -448,19 +448,19 @@ private extension UIInspector {
 		let sortedY = gridViews
 			.filter { isVisible($0) && $0.axis == .vertical }
 			.sorted {
-				abs($0.frame.midY - point.y) < abs($1.frame.midY - point.y)
+				abs($0.grid - point.y) < abs($1.grid - point.y)
 			}
 
-		let closestY = sortedY.first?.frame.midY ?? point.y
+		let closestY = sortedY.first?.grid ?? point.y
 //		sortedY
 //			.first {
 //				min(point.x - $0.frame.minX, $0.frame.maxX - point.x) > 0
 //			}?.frame.midY ?? sortedY.first?.frame.midY ?? point.y
 //
-		let threshold: CGFloat = 15
+		let threshold: CGFloat = 10 / scroll.zoomScale
 		let x = abs(closestX - point.x) < threshold ? closestX : point.x
 		let y = abs(closestY - point.y) < threshold ? closestY : point.y
-		return CGPoint(x: x, y: y)
+		return snapshot.convert(CGPoint(x: x, y: y), to: self)
 	}
 
 	func isVisible(_ view: UIView) -> Bool {
@@ -472,7 +472,7 @@ private extension UIInspector {
 		guard showGrid else { return }
 		let currentHighlighted = highlightedGrid
 		highlightedGrid = []
-		let highlightedWidth = gridWidth * 4
+		let highlightedWidth = 2.0
 		if !points.isEmpty {
 			let points = points.map { convert($0, to: container) }
 			for grid in gridViews {
@@ -569,7 +569,6 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
 	) -> Bool {
 		false
-//		otherGestureRecognizer !== scroll.panGestureRecognizer && otherGestureRecognizer !== scroll.pinchGestureRecognizer
 	}
 
 	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -580,7 +579,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 			return controls.draggableArea.bounds.contains(gestureRecognizer.location(in: controls.draggableArea))
 		}
 		guard !showLayers else {
-			return isMeasurementEnabled || isPipetteeEnabled
+			return isMagnificationEnabled || isPipetteeEnabled
 		}
 		return isMeasurementEnabled || isMagnificationEnabled || isPipetteeEnabled
 	}
@@ -655,7 +654,6 @@ private extension UIInspector {
 			}
 		}
 	}
-	
 	
 	func drawSelectionRectGesture(
 		_ gesture: UILongPressGestureRecognizer,
