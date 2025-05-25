@@ -16,6 +16,7 @@ final class UIInspector3D: UIView {
 	private var isAnimating = false
 	private let initialCameraDistance: Float = 1500
 	private let revealCameraDistance: Float = 2000
+	private var lastPinchLocation: CGPoint?
 	private let background = UISceneBackground()
 	var showBorderOverlay = true {
 		didSet {
@@ -392,6 +393,7 @@ final class UIInspector3D: UIView {
 				y: view.bounds.midY - CGFloat(hitResult.localCoordinates.y)
 			)
 			let point = view.convert(localHit, to: targetView)
+//			print(view.frame.size, localHit, point, sceneView.convert(point, to: source))
 			return sceneView.convert(point, to: source)
 		}
 		return nil
@@ -437,6 +439,22 @@ final class UIInspector3D: UIView {
 		}
 		camera.orthographicScale /= Double(gesture.scale)
 		gesture.scale = 1
+		let location = gesture.location(in: sceneView)
+		if let lastPinchLocation, !gesture.state.isFinal {
+			let deltaX = Float(location.x - lastPinchLocation.x)
+			let deltaY = Float(location.y - lastPinchLocation.y)
+			let cameraController = sceneView.defaultCameraController
+			cameraController.translateInCameraSpaceBy(
+				x: -deltaX,
+				y: deltaY,
+				z: 0
+			)
+		}
+		if gesture.state.isFinal {
+			lastPinchLocation = nil
+		} else {
+			lastPinchLocation = location
+		}
 	}
 
 	@objc func handleTwoFingerPan(_ gesture: UIPanGestureRecognizer) {
