@@ -12,7 +12,7 @@ UIInspector is a powerful debugging tool for iOS apps that allows you to inspect
 
 This tool is particularly useful for:
 
--  Debugging layout directly in XCode preview without needing to run the app
+- Debugging layout directly in XCode preview without needing to run the app
 - Design reviews and testing
 - As a simple alternative to Xcode's built-in inspector and other UI debugging tools
 

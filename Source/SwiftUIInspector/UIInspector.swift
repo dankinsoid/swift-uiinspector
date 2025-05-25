@@ -72,7 +72,7 @@ public final class UIInspector: UIView {
 	public var showUpdateAnimation = true
 
 	/// Whether to hide full-screen layers in the inspector.
-	public var hideFullScreenLayers = true {
+	public var hideFullScreenLayers = false {
 		didSet {
 			_update(reset: false)
 		}
@@ -93,14 +93,9 @@ public final class UIInspector: UIView {
 	private var hiddenRects: Set<UIView> = []
 
 	private let gridContainer = UIView()
-	private var horizontalGrid: [CGFloat] = []
-	private var verticalGrid: [CGFloat] = []
-	private var gridViews: [UIGrid] {
-		gridHViews + gridVViews
-	}
-
-	private var gridHViews: [UIGrid] = []
-	private var gridVViews: [UIGrid] = []
+	private let gridWidth: CGFloat = 0.5
+	private var highlightedGrid: Set<UIGrid> = []
+	private var gridViews: [UIGrid] = []
 
 	private weak var draggingView: UIView?
 	private var draggingControlOffset: CGPoint = .zero
@@ -379,30 +374,25 @@ private extension UIInspector {
 
 	func updateGrid() {
 		removeGrid()
-		horizontalGrid.removeAll()
 		let rects = [container] + rects.keys
 		for rect in rects {
 			for x in [rect.frame.minX, rect.frame.maxX] {
 				let line = UIGrid()
 				line.grid = x
+				line.axis = .horizontal
 				line.sourceRect = rect.frame
-				gridHViews.append(line)
-				horizontalGrid.append(x)
+				gridViews.append(line)
 			}
 		}
-		horizontalGrid = Set(horizontalGrid).sorted()
-
-		verticalGrid.removeAll()
 		for rect in rects {
 			for y in [rect.frame.minY, rect.frame.maxY] {
 				let line = UIGrid()
 				line.grid = y
+				line.axis = .vertical
 				line.sourceRect = rect.frame
-				gridVViews.append(line)
-				verticalGrid.append(y)
+				gridViews.append(line)
 			}
 		}
-		verticalGrid = Set(verticalGrid).sorted()
 
 		for line in gridViews {
 			line.backgroundColor = tintColor
@@ -413,37 +403,39 @@ private extension UIInspector {
 	}
 
 	func drawGrid() {
-		let threshold: CGFloat = 15
-		for line in gridVViews {
-			let size = min(line.sourceRect.size.width, container.bounds.width)
-			line.frame = container.convert(
-				CGRect(x: line.sourceRect.midX - size / 2, y: line.grid, width: size, height: 0),
-				to: gridContainer
-			)
-			.insetBy(dx: -threshold, dy: -0.25)
-		}
-		for line in gridHViews {
-			let size = min(line.sourceRect.size.height, container.bounds.height)
-			line.frame = container.convert(
-				CGRect(x: line.grid, y: line.sourceRect.midY - size / 2, width: 0, height: size),
-				to: gridContainer
-			)
-			.insetBy(dx: -0.25, dy: -threshold)
+		let threshold: CGFloat = 5
+		let halfWidth = gridWidth / 2
+		for line in gridViews {
+			switch line.axis {
+			case .horizontal:
+				let size = min(line.sourceRect.size.height, container.bounds.height)
+				line.frame = container.convert(
+					CGRect(x: line.grid, y: line.sourceRect.midY - size / 2, width: 0, height: size),
+					to: gridContainer
+				)
+				.insetBy(dx: -halfWidth, dy: -threshold)
+			case .vertical:
+				let size = min(line.sourceRect.size.width, container.bounds.width)
+				line.frame = container.convert(
+					CGRect(x: line.sourceRect.midX - size / 2, y: line.grid, width: size, height: 0),
+					to: gridContainer
+				)
+				.insetBy(dx: -threshold, dy: -halfWidth)
+			}
 		}
 	}
 
 	func removeGrid() {
 		gridViews.forEach { $0.removeFromSuperview() }
-		gridHViews.removeAll()
-		gridVViews.removeAll()
+		gridViews.removeAll()
 	}
 
 	func round(point: CGPoint) -> CGPoint {
 		guard !showLayers, !isMagnificationEnabled else { return point }
 		let point = snapshot.convert(convert(point, to: snapshot).roundedToScale, to: self)
 		guard showGrid else { return point }
-		let sortedX = gridHViews
-			.filter(isVisible)
+		let sortedX = gridViews
+			.filter { isVisible($0) && $0.axis == .horizontal }
 			.sorted {
 				abs($0.frame.midX - point.x) < abs($1.frame.midX - point.x)
 			}
@@ -453,8 +445,8 @@ private extension UIInspector {
 //				min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0
 //			}?.frame.midX ?? sortedX.first?.frame.midX ?? point.x
 
-		let sortedY = gridVViews
-			.filter(isVisible)
+		let sortedY = gridViews
+			.filter { isVisible($0) && $0.axis == .vertical }
 			.sorted {
 				abs($0.frame.midY - point.y) < abs($1.frame.midY - point.y)
 			}
@@ -471,9 +463,53 @@ private extension UIInspector {
 		return CGPoint(x: x, y: y)
 	}
 
-	private func isVisible(_ view: UIView) -> Bool {
+	func isVisible(_ view: UIView) -> Bool {
 		view.convert(view.bounds, to: container)
 			.intersects(convert(bounds, to: container))
+	}
+	
+	func highlightGrid(points: [CGPoint]) {
+		guard showGrid else { return }
+		let currentHighlighted = highlightedGrid
+		highlightedGrid = []
+		let highlightedWidth = gridWidth * 4
+		if !points.isEmpty {
+			let points = points.map { convert($0, to: container) }
+			for grid in gridViews {
+				switch grid.axis {
+				case .horizontal:
+					if grid.grid == points[0].x || grid.grid == points[1].x {
+						highlightedGrid.insert(grid)
+						updateWidth(grid: grid, width: highlightedWidth)
+					}
+				case .vertical:
+					if grid.grid == points[0].y || grid.grid == points[1].y {
+						highlightedGrid.insert(grid)
+						updateWidth(grid: grid, width: highlightedWidth)
+					}
+				}
+			}
+		}
+		for grid in currentHighlighted.subtracting(highlightedGrid) {
+			updateWidth(grid: grid, width: gridWidth)
+		}
+	}
+	
+	func updateWidth(grid: UIGrid, width: CGFloat) {
+		switch grid.axis {
+		case .horizontal:
+			grid.frame = CGRect(
+				origin: CGPoint(x: grid.frame.midX, y: grid.frame.minY),
+				size: CGSize(width: 0, height: grid.frame.height)
+			)
+			.insetBy(dx: -width / 2, dy: 0)
+		case .vertical:
+			grid.frame = CGRect(
+				origin: CGPoint(x: grid.frame.minX, y: grid.frame.midY),
+				size: CGSize(width: grid.frame.width, height: 0)
+			)
+			.insetBy(dx: 0, dy: -width / 2)
+		}
 	}
 }
 
@@ -621,6 +657,9 @@ private extension UIInspector {
 			x: endPoint.x - startPoint.x,
 			y: endPoint.y - startPoint.y
 		)
+		if !isMagnificationEnabled {
+			highlightGrid(points: [startPoint, endPoint])
+		}
 		selectionView.frame = CGRect(
 			origin: CGPoint(
 				x: min(startPoint.x, endPoint.x),
@@ -637,6 +676,8 @@ private extension UIInspector {
 			if isMagnificationEnabled {
 				zoomToFitSelection()
 				isMagnificationEnabled = false
+			} else {
+				highlightGrid(points: [])
 			}
 			selectionView.removeFromSuperview()
 		}
