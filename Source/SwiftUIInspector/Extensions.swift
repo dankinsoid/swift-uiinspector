@@ -60,6 +60,10 @@ extension UIView {
 		subviews + subviews.flatMap(\.allSubviews)
 	}
 
+	var selfAndllVisibleSubviewsLayers: [[UIView]] {
+		[[self]] + allVisibleSubviewsLayers
+	}
+
 	var allVisibleSubviewsLayers: [[UIView]] {
 		let visible = subviews.filter { !$0.isHidden }
 		return ([visible] + visible.flatMap(\.allVisibleSubviewsLayers)).filter { !$0.isEmpty }
@@ -385,6 +389,10 @@ extension CGSize {
 
 	func less(than size: CGSize) -> Bool {
 		width < size.width || height < size.height
+	}
+	
+	var isVisible: Bool {
+		!width.isZero && !height.isZero && !width.isNaN && !height.isNaN
 	}
 }
 

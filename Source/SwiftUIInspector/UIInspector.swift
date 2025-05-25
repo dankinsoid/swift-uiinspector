@@ -331,7 +331,7 @@ private extension UIInspector {
 		snapshot.frame = frame
 		container.addSubview(snapshot)
 
-		for (_, layer) in targetView.allVisibleSubviewsLayers.enumerated() {
+		for (_, layer) in targetView.selfAndllVisibleSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
 				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size) else {
@@ -568,7 +568,8 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
 	) -> Bool {
-		otherGestureRecognizer !== scroll.panGestureRecognizer && otherGestureRecognizer !== scroll.pinchGestureRecognizer
+		false
+//		otherGestureRecognizer !== scroll.panGestureRecognizer && otherGestureRecognizer !== scroll.pinchGestureRecognizer
 	}
 
 	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -579,7 +580,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 			return controls.draggableArea.bounds.contains(gestureRecognizer.location(in: controls.draggableArea))
 		}
 		guard !showLayers else {
-			return isMeasurementEnabled
+			return isMeasurementEnabled || isPipetteeEnabled
 		}
 		return isMeasurementEnabled || isMagnificationEnabled || isPipetteeEnabled
 	}
@@ -628,15 +629,25 @@ private extension UIInspector {
 			drawSelectionRectGesture(gesture, location: location)
 			return
 		}
-		guard !showLayers else { return }
 		if isMeasurementEnabled {
+			guard !showLayers else { return }
 			drawSelectionRectGesture(gesture, location: location)
 		} else if isPipetteeEnabled {
-			let location = gesture.location(in: snapshot)
-			if gesture.state == .began {
-				addColorPicker(at: location)
+			let pixel: CGPoint
+			let location = gesture.location(in: self)
+			if showLayers {
+				guard let point = inspector3D.convert(gesture.location(in: inspector3D)) else {
+					removeColorPicker()
+					return
+				}
+				pixel = inspector3D.convert(point, to: snapshot)
+			} else {
+				pixel = gesture.location(in: snapshot)
 			}
-			updateColorPicker(at: location)
+			if colorPipette.superview == nil {
+				addColorPicker(at: location, pixel: pixel)
+			}
+			updateColorPicker(at: location, pixel: pixel)
 			
 			if gesture.state.isFinal {
 				removeColorPicker()
@@ -644,6 +655,7 @@ private extension UIInspector {
 			}
 		}
 	}
+	
 	
 	func drawSelectionRectGesture(
 		_ gesture: UILongPressGestureRecognizer,
@@ -739,7 +751,7 @@ private extension UIInspector {
 				selectedIcon: UIImage(systemName: "eyedropper.full"),
 				unselectedIcon: UIImage(systemName: "eyedropper"),
 				isSelected: isPipetteeEnabled,
-				isEnabled: !showLayers && !isMagnificationEnabled
+				isEnabled: !isMagnificationEnabled
 			) { [weak self] in
 				guard let self else { return }
 				isPipetteeEnabled.toggle()
@@ -818,12 +830,12 @@ private extension UIInspector {
 
 private extension UIInspector {
 
-	func addColorPicker(at point: CGPoint) {
+	func addColorPicker(at point: CGPoint, pixel: CGPoint) {
 		guard colorPipette.superview == nil else { return }
 		colorPipette.alpha = 0
 		setShadow(for: colorPipette)
 		addSubview(colorPipette)
-		updateColorPicker(at: point)
+		updateColorPicker(at: point, pixel: pixel)
 		UIView.animate(withDuration: 0.1) {
 			self.colorPipette.alpha = 1
 		}
@@ -837,13 +849,13 @@ private extension UIInspector {
 		}
 	}
 
-	func updateColorPicker(at point: CGPoint) {
-		if let color = snapshot.image?.pixelColor(at: snapshot.imagePixelPoint(from: point)) {
+	func updateColorPicker(at point: CGPoint, pixel: CGPoint) {
+		guard colorPipette.superview != nil, !colorPipette.isHidden else { return }
+		if let color = snapshot.image?.pixelColor(at: snapshot.imagePixelPoint(from: pixel)) {
 			colorPipette.color = color
 			hex = color.hexString
 		}
 		let size = colorPipette.intrinsicContentSize
-		let point = snapshot.convert(point, to: self)
 		colorPipette.frame = CGRect(
 			origin: CGPoint(
 				x: point.x - size.width / 2,

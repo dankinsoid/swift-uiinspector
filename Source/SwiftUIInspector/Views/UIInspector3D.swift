@@ -65,7 +65,7 @@ final class UIInspector3D: UIView {
 		guard let targetView, window != nil, bounds.width > 0 && bounds.height > 0 else {
 			return
 		}
-		let groupedViews = [[targetView]] + targetView.allVisibleSubviewsLayers
+		let groupedViews = targetView.selfAndllVisibleSubviewsLayers
 
 		// Clear existing nodes (but keep camera and lights)
 		scene.rootNode.childNodes.forEach {
@@ -296,8 +296,12 @@ final class UIInspector3D: UIView {
 		// Apply snapshot as texture
 		let snapshot = view.snapshotImageWithoutSubviews()
 		geometry.firstMaterial?.diffuse.contents = snapshot
+		geometry.firstMaterial?.diffuse.magnificationFilter = .nearest
+		geometry.firstMaterial?.diffuse.minificationFilter = .nearest
+		geometry.firstMaterial?.diffuse.wrapS = .clamp
+		geometry.firstMaterial?.diffuse.wrapT = .clamp
 		geometry.firstMaterial?.isDoubleSided = true
-		geometry.firstMaterial?.lightingModel = .constant // Make sure it's always visible regardless of lighting
+		geometry.firstMaterial?.lightingModel = .constant
 		
 		let node = SCNNode(geometry: geometry)
 		borderOverlayNodes.formUnion(node.addBorderOverlay(color: tintColor, hidden: !showBorderOverlay))
@@ -309,7 +313,7 @@ final class UIInspector3D: UIView {
 		}
 		
 		// Convert view position to targetView coordinate system
-		let viewFrameInTarget = view.superview?.convert(view.frame, to: targetView) ?? view.frame
+		let viewFrameInTarget = view.superview?.convert(view.frame, to: targetView) ?? view.convert(view.bounds, to: targetView)
 		
 		// Calculate position relative to targetView center
 		let targetCenter = CGPoint(x: targetView.bounds.midX, y: targetView.bounds.midY)
@@ -373,6 +377,24 @@ final class UIInspector3D: UIView {
 			completion?()
 		}
 		SCNTransaction.commit()
+	}
+
+	func convert(_ location: CGPoint, of source: UIView? = nil) -> CGPoint? {
+		guard let targetView else { return nil }
+		let source = source ?? self
+		let location = source.convert(location, to: sceneView)
+		let hitResults = sceneView.hitTest(location, options: nil)
+		
+		if let hitResult = hitResults.first(where: { viewNodes[$0.node]?.frame.size.isVisible == true }),
+		   let view = viewNodes[hitResult.node] {
+			let localHit = CGPoint(
+				x: CGFloat(hitResult.localCoordinates.x) + view.bounds.midX,
+				y: view.bounds.midY - CGFloat(hitResult.localCoordinates.y)
+			)
+			let point = view.convert(localHit, to: targetView)
+			return sceneView.convert(point, to: source)
+		}
+		return nil
 	}
 
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
