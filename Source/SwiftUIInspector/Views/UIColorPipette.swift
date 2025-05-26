@@ -13,8 +13,15 @@ final class UIColorPipette: UIView {
 		set {
 			guard newValue != color else { return }
 			colorView.backgroundColor = newValue
-			label.textColor = UIInspector.foregroundColor
-			label.text = newValue.hexString
+			invalidateIntrinsicContentSize()
+		}
+	}
+
+	var text: String {
+		get { label.text ?? "" }
+		set {
+			guard newValue != text else { return }
+			label.text = newValue
 			invalidateIntrinsicContentSize()
 		}
 	}
@@ -32,6 +39,7 @@ final class UIColorPipette: UIView {
 		backgroundColor = UIInspector.backgroundColor
 		addSubview(colorView)
 		addSubview(label)
+		label.textColor = UIInspector.foregroundColor
 		label.font = .monospacedSystemFont(ofSize: 14, weight: .medium)
 		label.text = color.hexString
 	}

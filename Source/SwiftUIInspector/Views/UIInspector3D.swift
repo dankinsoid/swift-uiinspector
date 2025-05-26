@@ -523,7 +523,6 @@ extension UIInspector3D {
 		
 		// 1. Найти плоскость, на которую нажал пользователь (определить Z-координату)
 		guard
-			let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
 			let geometry = planeNode.geometry as? SCNPlane else {
 			return
 		}

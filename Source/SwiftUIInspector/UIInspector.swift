@@ -653,8 +653,11 @@ private extension UIInspector {
 			updateColorPicker(at: location, pixel: pixel)
 			
 			if gesture.state.isFinal {
-				removeColorPicker()
 				UIPasteboard.general.string = hex
+				updateColorPicker(at: location, pixel: pixel, text: "COPIED!")
+				DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+					self?.removeColorPicker()
+				}
 			}
 		}
 	}
@@ -872,17 +875,18 @@ private extension UIInspector {
 	}
 
 	func removeColorPicker() {
-		UIView.animate(withDuration: 0.1) {
+		UIView.animate(withDuration: 0.25) {
 			self.colorPipette.alpha = 0
 		} completion: { _ in
 			self.colorPipette.removeFromSuperview()
 		}
 	}
 
-	func updateColorPicker(at point: CGPoint, pixel: CGPoint) {
+	func updateColorPicker(at point: CGPoint, pixel: CGPoint, text: String? = nil) {
 		guard colorPipette.superview != nil, !colorPipette.isHidden else { return }
 		if let color = snapshot.image?.pixelColor(at: snapshot.imagePixelPoint(from: pixel)) {
 			colorPipette.color = color
+			colorPipette.text = text ?? color.hexString
 			hex = color.hexString
 		}
 		let size = colorPipette.intrinsicContentSize
