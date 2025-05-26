@@ -9,6 +9,7 @@ final class UIInspector3D: UIView {
 	private let sceneView = SCNView()
 	private let scene = SCNScene()
 	private var viewNodes: [SCNNode: ViewItem] = [:]
+	private var targetNode: SCNNode?
 	private var highlightNodes: Set<SCNNode> = []
 	private var borderOverlayNodes: Set<SCNNode> = []
 	var notifyViewSelected: ((UIView) -> Void)?
@@ -97,6 +98,8 @@ final class UIInspector3D: UIView {
 			i += views.count
 		}
 		
+		targetNode = viewNodes.first(where: { $0.value.view === targetView.view })?.key
+
 		// Force scene view to update
 		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
 			whenReady?()
@@ -565,7 +568,7 @@ extension UIInspector3D {
 	}
 }
 
-private extension UIInspector3D {
+extension UIInspector3D {
 	
 	func convertTapToTargetView(_ location: CGPoint) -> (location: CGPoint, result: SCNHitTestResult)? {
 		guard let targetView else { return nil }
@@ -586,14 +589,20 @@ private extension UIInspector3D {
 		}
 		return nil
 	}
-	
-//	func convertTargetToSceneView(_ location: CGPoint) -> CGPoint? {
-//		guard let targetNode = viewNodes.first(where: { $0.value.view === targetView })?.key else { return nil }
-//		targetNode.conve
-//		sceneView.projectPoint(
-//			SCNVector3(location.x, location.y, <#T##z: Float##Float#>)
-//		)
-//	}
+
+	func convertFromTarget(_ location: CGPoint) -> CGPoint? {
+		guard let targetNode, let targetView else { return nil }
+		let position = targetNode.convertPosition(
+			SCNVector3(
+				location.x - targetView.size.width / 2,
+				targetView.size.height / 2 - location.y,
+				0
+			),
+			to: nil
+		)
+		let point = sceneView.projectPoint(position)
+		return sceneView.convert(CGPoint(x: CGFloat(point.x), y: CGFloat(point.y)), to: self)
+	}
 }
 
 extension SCNNode {

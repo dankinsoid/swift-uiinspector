@@ -583,6 +583,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 			return controls.draggableArea.bounds.contains(gestureRecognizer.location(in: controls.draggableArea))
 		}
 		guard !showLayers else {
+			// remove if measurement will be supported in 3D inspector
 			return isMagnificationEnabled || isPipetteeEnabled
 		}
 		return isMeasurementEnabled || isMagnificationEnabled || isPipetteeEnabled
@@ -681,11 +682,6 @@ private extension UIInspector {
 		if showLayers, !isMagnificationEnabled {
 			point0 = inspector3D.convert(draggingStart).map { inspector3D.convert($0, to: self) }
 			point1 = inspector3D.convert(location).map { inspector3D.convert($0, to: self) }
-			
-			inspector3D.showMeasurementPlane(
-				convert(draggingStart, to: inspector3D),
-				convert(location, to: inspector3D)
-			)
 		} else {
 			point0 = draggingStart
 			point1 = location
@@ -700,7 +696,7 @@ private extension UIInspector {
 			if !isMagnificationEnabled {
 				highlightGrid(points: [startPoint, endPoint])
 			}
-			let rect = CGRect(
+			var rect = CGRect(
 				origin: CGPoint(
 					x: min(startPoint.x, endPoint.x),
 					y: min(startPoint.y, endPoint.y)
@@ -713,6 +709,20 @@ private extension UIInspector {
 		    
 			if !showLayers || isMagnificationEnabled { 
 				selectionView.frame = rect
+			} else
+				if let p0 = inspector3D.convertFromTarget(startPoint),
+				   let p1 = inspector3D.convertFromTarget(endPoint) {
+				rect = CGRect(
+					origin: CGPoint(
+						x: min(p0.x, p1.x),
+						y: min(p0.y, p1.y)
+					),
+					size: CGSize(
+						width: abs(p0.x - p1.x),
+						height: abs(p0.y - p1.y)
+					)
+				)
+				inspector3D.showMeasurementPlane(p0, p1)
 			}
 			let selectedSize = convert(rect, to: snapshot)
 			measurementLabel.text = selectedSize.size.inspectorDescription
