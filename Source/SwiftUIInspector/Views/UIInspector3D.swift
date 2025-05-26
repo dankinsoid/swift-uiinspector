@@ -1,13 +1,14 @@
 import SwiftUI
 import SceneKit
+import simd
 
 final class UIInspector3D: UIView {
 	
-	private(set) weak var targetView: UIView?
+	private(set) var targetView: ViewItem?
 	private var selectedNode: SCNNode?
 	private let sceneView = SCNView()
 	private let scene = SCNScene()
-	private var viewNodes: [SCNNode: UIView] = [:]
+	private var viewNodes: [SCNNode: ViewItem] = [:]
 	private var highlightNodes: Set<SCNNode> = []
 	private var borderOverlayNodes: Set<SCNNode> = []
 	var notifyViewSelected: ((UIView) -> Void)?
@@ -18,6 +19,7 @@ final class UIInspector3D: UIView {
 	private let revealCameraDistance: Float = 2000
 	private var lastPinchLocation: CGPoint?
 	private let background = UISceneBackground()
+	private var measurmentPlane: SCNNode?
 	var showBorderOverlay = true {
 		didSet {
 			guard oldValue != showBorderOverlay else { return }
@@ -41,7 +43,7 @@ final class UIInspector3D: UIView {
 	}
 	
 	func inspect(view: UIView, animate: Bool = false, whenReady: (() -> Void)? = nil) {
-		targetView = view
+		targetView = ViewItem(view)
 		update(animate: animate, whenReady: whenReady)
 	}
 	
@@ -66,7 +68,7 @@ final class UIInspector3D: UIView {
 		guard let targetView, window != nil, bounds.width > 0 && bounds.height > 0 else {
 			return
 		}
-		let groupedViews = targetView.selfAndllVisibleSubviewsLayers
+		let groupedViews = targetView.view.selfAndllVisibleSubviewsLayers
 
 		// Clear existing nodes (but keep camera and lights)
 		scene.rootNode.childNodes.forEach {
@@ -74,6 +76,7 @@ final class UIInspector3D: UIView {
 				$0.removeFromParentNode()
 			}
 		}
+		hideMeasurementPlane()
 		viewNodes.removeAll()
 		highlightNodes.removeAll()
 		borderOverlayNodes.removeAll()
@@ -89,7 +92,7 @@ final class UIInspector3D: UIView {
 			for (j, view) in views.enumerated() {
 				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
 				scene.rootNode.addChildNode(node)
-				viewNodes[node] = view
+				viewNodes[node] = ViewItem(view)
 			}
 			i += views.count
 		}
@@ -314,7 +317,7 @@ final class UIInspector3D: UIView {
 		}
 		
 		// Convert view position to targetView coordinate system
-		let viewFrameInTarget = view.superview?.convert(view.frame, to: targetView) ?? view.convert(view.bounds, to: targetView)
+		let viewFrameInTarget = view.superview?.convert(view.frame, to: targetView.view) ?? view.convert(view.bounds, to: targetView.view)
 		
 		// Calculate position relative to targetView center
 		let targetCenter = CGPoint(x: targetView.bounds.midX, y: targetView.bounds.midY)
@@ -381,44 +384,33 @@ final class UIInspector3D: UIView {
 		SCNTransaction.commit()
 	}
 
-	func convert(_ location: CGPoint, of source: UIView? = nil) -> CGPoint? {
-		guard let targetView else { return nil }
-		let source = source ?? self
-		let location = source.convert(location, to: sceneView)
-		let hitResults = sceneView.hitTest(location, options: nil)
-		
-		if let hitResult = hitResults.first(where: { viewNodes[$0.node]?.frame.size.isVisible == true }),
-		   let view = viewNodes[hitResult.node] {
-			let localHit = CGPoint(
-				x: CGFloat(hitResult.localCoordinates.x) + view.bounds.midX,
-				y: view.bounds.midY - CGFloat(hitResult.localCoordinates.y)
-			)
-			let point = view.convert(localHit, to: targetView)
-			return sceneView.convert(point, to: source)
+	func convert(_ location: CGPoint) -> CGPoint? {
+		convertTapToTargetView(location).map {
+			sceneView.convert($0.location, to: self)
 		}
-		return nil
 	}
 
 	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
 		let location = gesture.location(in: sceneView)
-		let hitResults = sceneView.hitTest(location, options: nil)
-		
+
 		// Clear previous selection
 		clearSelection()
+
+		guard let node = convertTapToTargetView(location)?.result.node else {
+			return
+		}
+
+		selectedNode = node
+		animate(duration: 0.1) {
+			highlightNode(node)
+		}
 		
-		if let hitResult = hitResults.first {
-			selectedNode = hitResult.node
-			animate(duration: 0.1) {
-				highlightNode(hitResult.node)
-			}
-			
-			// Find corresponding UIView
-			if let view = viewNodes[hitResult.node] {
-				notifyViewSelected?(view)
-			}
+		// Find corresponding UIView
+		if let view = viewNodes[node] {
+			notifyViewSelected?(view.view)
 		}
 	}
-	
+
 	@objc func handlePan(_ gesture: UIPanGestureRecognizer) {
 		guard gesture.numberOfTouches == 1 else { return }
 		let translation = gesture.translation(in: sceneView)
@@ -486,28 +478,148 @@ final class UIInspector3D: UIView {
 	}
 }
 
+extension UIInspector3D {
+
+	func showMeasurementPlane(_ point0: CGPoint, _ point1: CGPoint) {
+		if let measurmentPlane {
+			updateMeasurementPlane(measurmentPlane, point0, point1)
+		} else {
+			let planeNode = createMeasurementPlane()
+			updateMeasurementPlane(planeNode, point0, point1)
+			measurmentPlane = planeNode
+			scene.rootNode.addChildNode(planeNode)
+		}
+	}
+
+	func hideMeasurementPlane() {
+		measurmentPlane?.removeFromParentNode()
+		measurmentPlane = nil
+	}
+
+	private func createMeasurementPlane() -> SCNNode {
+		// Создаем геометрию плоскости
+		
+		let geometry = SCNPlane()
+		// Настраиваем материал
+		let material = SCNMaterial()
+		material.diffuse.contents = tintColor
+		material.transparency = 0.5
+		material.lightingModel = .constant
+		material.isDoubleSided = true
+		geometry.materials = [material]
+		
+		// 5. Создаем узел и позиционируем его
+		let planeNode = SCNNode(geometry: geometry)
+		planeNode.position = SCNVector3Zero
+		
+		// Плоскость уже параллельна всем остальным (rotation = 0)
+		
+		planeNode.categoryBitMask = 2
+		return planeNode
+	}
+
+	// Обновить размер и положение существующей плоскости
+	private func updateMeasurementPlane(_ planeNode: SCNNode, _ point0: CGPoint, _ point1: CGPoint) {
+		
+		// 1. Найти плоскость, на которую нажал пользователь (определить Z-координату)
+		guard
+			let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
+			let geometry = planeNode.geometry as? SCNPlane else {
+			return
+		}
+		
+		let center = sceneView.unprojectPoint(
+			SCNVector3(
+				Float(point1.x + point0.x) / 2,
+				Float(point1.y + point0.y) / 2,
+				0.1
+			)
+		)
+		
+		planeNode.position = center
+		
+		let p0 = planeNode.simdWorldPosition
+		
+		// Локальные X и Y оси в мировой системе
+		let ux = planeNode.simdConvertVector(simd_float3(1, 0, 0), to: nil)
+		let uy = planeNode.simdConvertVector(simd_float3(0, 1, 0), to: nil)
+		
+		// Проецируем базисные векторы на экран
+		let screen0 = sceneView.projectPoint(SCNVector3(p0))
+		let screenX = sceneView.projectPoint(SCNVector3(p0 + ux))
+		let screenY = sceneView.projectPoint(SCNVector3(p0 + uy))
+		
+		let vx = simd_float2(screenX.x - screen0.x, screenX.y - screen0.y)
+		let vy = simd_float2(screenY.x - screen0.x, screenY.y - screen0.y)
+		
+		let J = float2x2(columns: (vx, vy))
+		let invJ = J.inverse
+		
+		let dx = Float(point1.x - point0.x)
+		let dy = Float(point1.y - point0.y)
+		let screenDelta = simd_float2(dx, dy)
+		let planeDelta = invJ * screenDelta
+		
+		// 4. Расстояние между точками в координатах плоскости
+		geometry.width = CGFloat(abs(planeDelta.x))
+		geometry.height = CGFloat(abs(planeDelta.y))
+	}
+}
+
+private extension UIInspector3D {
+	
+	func convertTapToTargetView(_ location: CGPoint) -> (location: CGPoint, result: SCNHitTestResult)? {
+		guard let targetView else { return nil }
+		let location = convert(location, to: sceneView)
+		let hitResults = sceneView.hitTest(location, options: [.categoryBitMask: 1])
+		
+		if let hitResult = hitResults.first(
+			where: {
+				viewNodes[$0.node]?.frame.size.isVisible == true && $0.node.geometry is SCNPlane
+			}
+		),
+		let view = viewNodes[hitResult.node] {
+			let localHit = CGPoint(
+				x: CGFloat(hitResult.localCoordinates.x) + view.bounds.midX,
+				y: view.bounds.midY - CGFloat(hitResult.localCoordinates.y)
+			)
+			return (view.convert(localHit, to: targetView), hitResult)
+		}
+		return nil
+	}
+	
+//	func convertTargetToSceneView(_ location: CGPoint) -> CGPoint? {
+//		guard let targetNode = viewNodes.first(where: { $0.value.view === targetView })?.key else { return nil }
+//		targetNode.conve
+//		sceneView.projectPoint(
+//			SCNVector3(location.x, location.y, <#T##z: Float##Float#>)
+//		)
+//	}
+}
+
 extension SCNNode {
 	
 	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 0.2) -> SCNNode? {
 		guard let geometry = self.geometry as? SCNPlane else { return nil }
-		 
-		 // Create overlay with same dimensions as the original plane
-		 let overlayGeometry = SCNPlane(width: geometry.width, height: geometry.height)
-		 
-		 let material = SCNMaterial()
-		 material.diffuse.contents = color
-		 material.transparency = alpha
-		 material.lightingModel = .constant
-		 material.isDoubleSided = true
-		 
-		 overlayGeometry.materials = [material]
-		 
-		 let overlayNode = SCNNode(geometry: overlayGeometry)
-		 // Position at the same location as parent, just slightly in front
-		 overlayNode.position = SCNVector3(0, 0, 0.2)
-		 
-		 addChildNode(overlayNode)
-		 return overlayNode
+		
+		// Create overlay with same dimensions as the original plane
+		let overlayGeometry = SCNPlane(width: geometry.width, height: geometry.height)
+		
+		let material = SCNMaterial()
+		material.diffuse.contents = color
+		material.transparency = alpha
+		material.lightingModel = .constant
+		material.isDoubleSided = true
+		
+		overlayGeometry.materials = [material]
+		
+		let overlayNode = SCNNode(geometry: overlayGeometry)
+		// Position at the same location as parent, just slightly in front
+		overlayNode.position = SCNVector3(0, 0, 0.2)
+		
+		overlayNode.categoryBitMask = 2
+		addChildNode(overlayNode)
+		return overlayNode
 	}
 
 	func addBorderOverlay(color: UIColor = UIInspector.tintColor, thickness: CGFloat = 0.5, hidden: Bool) -> Set<SCNNode> {
@@ -545,9 +657,11 @@ extension SCNNode {
 			borderNode.position = position
 			borderNode.isHidden = hidden // Set initial visibility
 			
+			borderNode.categoryBitMask = 2
 			addChildNode(borderNode)
 			borderNodes.insert(borderNode)
 		}
 		return borderNodes
 	}
 }
+

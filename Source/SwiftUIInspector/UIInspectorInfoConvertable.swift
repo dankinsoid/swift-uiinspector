@@ -59,6 +59,9 @@ public extension UIView {
 		if let scroll = self as? UIScrollView {
 			result += scroll.defaultScrollInspectorInfo
 		}
+		if let control = self as? UIControl {
+			result += control.defaultControlInspectorInfo
+		}
 		return result
 	}
 }
@@ -303,6 +306,23 @@ public extension UIScrollView {
 				UIInspector.Cell("Is Dragging", isDragging),
 				UIInspector.Cell("Is Decelerating", isDecelerating),
 			]),
+		]
+	}
+}
+
+public extension UIControl {
+
+	var defaultControlInspectorInfo: [UIInspector.Section] {
+		[
+			UIInspector.Section(
+				title: "Control",
+				cells: [
+					UIInspector.Cell("Is Enabled", isEnabled),
+					UIInspector.Cell("Is Selected", isSelected),
+					UIInspector.Cell("Is Highlighted", isHighlighted),
+					UIInspector.Cell("State", state.rawValue.hexString),
+				]
+			)
 		]
 	}
 }

@@ -84,7 +84,8 @@ public final class UIInspector: UIView {
 	private let snapshot = UIImageView()
 	private var controls = UIInspectorControls()
 	private lazy var colorPipette = UIColorPipette()
-	private lazy var selectionView = UIMeasurementSelection()
+	private lazy var selectionView = UIView()
+	private lazy var measurementLabel = UIMeasurementLabel()
 	private let inspector3D = UIInspector3D()
 	private let animationView = UIView()
 
@@ -195,7 +196,9 @@ public final class UIInspector: UIView {
 		tintColor = Self.tintColor
 		backgroundColor = .clear
 		background.tintColor = tintColor
-		selectionView.color = tintColor
+		selectionView.backgroundColor = tintColor.withAlphaComponent(0.5)
+		measurementLabel.textColor = tintColor
+		
 		inspector3D.tintColor = tintColor
 		clipsToBounds = true
 	
@@ -248,7 +251,8 @@ public final class UIInspector: UIView {
 		}
 		inspector3D.tintColor = tintColor
 		updateButtons()
-		selectionView.color = tintColor
+		selectionView.backgroundColor = tintColor.withAlphaComponent(0.5)
+		measurementLabel.textColor = tintColor
 		background.tintColor = tintColor
 	}
 	
@@ -568,7 +572,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
 	) -> Bool {
-		false
+		otherGestureRecognizer is UITapGestureRecognizer
 	}
 
 	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -660,32 +664,57 @@ private extension UIInspector {
 		location: CGPoint
 	) {
 		if gesture.state == .began {
-			addSubview(selectionView)
-			selectionView.label.isHidden = isMagnificationEnabled
+			if !showLayers || isMagnificationEnabled {
+				addSubview(selectionView)
+			}
+			if !isMagnificationEnabled {
+				addSubview(measurementLabel)
+			}
 			bringSubviewToFront(controls)
 			draggingStart = location
 		}
-		let startPoint = round(point: draggingStart)
-		let endPoint = round(point: location)
-		let translation = CGPoint(
-			x: endPoint.x - startPoint.x,
-			y: endPoint.y - startPoint.y
-		)
-		if !isMagnificationEnabled {
-			highlightGrid(points: [startPoint, endPoint])
-		}
-		selectionView.frame = CGRect(
-			origin: CGPoint(
-				x: min(startPoint.x, endPoint.x),
-				y: min(startPoint.y, endPoint.y)
-			),
-			size: CGSize(
-				width: abs(translation.x),
-				height: abs(translation.y)
+		let point0: CGPoint?
+		let point1: CGPoint?
+		if showLayers, !isMagnificationEnabled {
+			point0 = inspector3D.convert(draggingStart).map { inspector3D.convert($0, to: self) }
+			point1 = inspector3D.convert(location).map { inspector3D.convert($0, to: self) }
+			
+			inspector3D.showMeasurementPlane(
+				convert(draggingStart, to: inspector3D),
+				convert(location, to: inspector3D)
 			)
-		)
-		let selectedSize = convert(selectionView.frame, to: snapshot)
-		selectionView.label.text = selectedSize.size.inspectorDescription
+		} else {
+			point0 = draggingStart
+			point1 = location
+		}
+		if let point0, let point1 {
+			let startPoint = round(point: point0)
+			let endPoint = round(point: point1)
+			let translation = CGPoint(
+				x: endPoint.x - startPoint.x,
+				y: endPoint.y - startPoint.y
+			)
+			if !isMagnificationEnabled {
+				highlightGrid(points: [startPoint, endPoint])
+			}
+			let rect = CGRect(
+				origin: CGPoint(
+					x: min(startPoint.x, endPoint.x),
+					y: min(startPoint.y, endPoint.y)
+				),
+				size: CGSize(
+					width: abs(translation.x),
+					height: abs(translation.y)
+				)
+			)
+		    
+			if !showLayers || isMagnificationEnabled { 
+				selectionView.frame = rect
+			}
+			let selectedSize = convert(rect, to: snapshot)
+			measurementLabel.text = selectedSize.size.inspectorDescription
+			measurementLabel.place(in: rect)
+		}
 		if gesture.state.isFinal {
 			if isMagnificationEnabled {
 				zoomToFitSelection()
@@ -694,6 +723,8 @@ private extension UIInspector {
 				highlightGrid(points: [])
 			}
 			selectionView.removeFromSuperview()
+			measurementLabel.removeFromSuperview()
+			inspector3D.hideMeasurementPlane()
 		}
 	}
 }
@@ -832,6 +863,7 @@ private extension UIInspector {
 		guard colorPipette.superview == nil else { return }
 		colorPipette.alpha = 0
 		setShadow(for: colorPipette)
+		setShadow(for: measurementLabel)
 		addSubview(colorPipette)
 		updateColorPicker(at: point, pixel: pixel)
 		UIView.animate(withDuration: 0.1) {

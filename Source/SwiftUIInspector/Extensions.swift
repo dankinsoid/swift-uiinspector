@@ -439,3 +439,10 @@ extension Float {
 
 	var degreesToRadians: Float { self * .pi / 180 }
 }
+
+extension UInt {
+	
+	var hexString: String {
+		String(format: "%02X", self)
+	}
+}

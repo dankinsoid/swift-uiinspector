@@ -1,45 +1,54 @@
 import SwiftUI
 
-final class UIMeasurementSelection: UIView {
+final class UIMeasurementLabel: UIView {
 
-	let label = UILabel()
+	private let label = UILabel()
+	
+	var textColor: UIColor {
+		get { label.textColor }
+		set { label.textColor = newValue }
+	}
 
-	var color: UIColor? {
-		didSet {
-			backgroundColor = color?.withAlphaComponent(0.5)
-			label.textColor = color
-			label.backgroundColor = UIInspector.backgroundColor
-			label.textAlignment = .center
-			layer.borderColor = color?.cgColor
+	var text: String? {
+		get { label.text }
+		set {
+			guard newValue != text else { return }
+			label.text = newValue
+			invalidateIntrinsicContentSize()
 		}
 	}
-
+	
 	init() {
 		super.init(frame: .zero)
+		backgroundColor = UIInspector.backgroundColor
+		label.textAlignment = .center
 		label.font = .monospacedSystemFont(ofSize: 12, weight: .medium)
 		addSubview(label)
-		label.layer.masksToBounds = true
+		clipsToBounds = false
 	}
-
+	
+	required init?(coder: NSCoder) {
+		fatalError("init(coder:) has not been implemented")
+	}
+	
 	override func layoutSubviews() {
 		super.layoutSubviews()
+		label.frame = bounds
+		layer.cornerRadius = min(bounds.height, bounds.width) / 2
+	}
+
+	func place(in rect: CGRect) {
 		guard let window else { return }
 		let labelSize = label.intrinsicContentSize
-		label.frame = CGRect(
+		frame = CGRect(
 			origin: CGPoint(
-				x: bounds.width / 2 - labelSize.width / 2,
-				y: bounds.height / 2 - labelSize.height / 2
+				x: rect.midX - labelSize.width / 2,
+				y: rect.midY - labelSize.height / 2
 			),
 			size: labelSize
 		)
 		.insetBy(dx: -5, dy: -3)
 		.offsetBy(dx: 0, dy: -20)
-		.inside(window.convert(window.bounds, to: self))
-		label.layer.cornerRadius = min(label.bounds.height, label.bounds.width) / 2
-	}
-
-	@available(*, unavailable)
-	required init?(coder: NSCoder) {
-		fatalError("init(coder:) has not been implemented")
+		.inside(window.convert(window.bounds, to: superview))
 	}
 }
