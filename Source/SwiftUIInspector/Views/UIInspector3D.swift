@@ -429,10 +429,10 @@ final class UIInspector3D: UIView {
 		else {
 			return
 		}
+		let location = gesture.location(in: sceneView)
 		camera.orthographicScale /= Double(gesture.scale)
 		gesture.scale = 1
-		let location = gesture.location(in: sceneView)
-		if let lastPinchLocation, !gesture.state.isFinal {
+		if let lastPinchLocation, gesture.state == .changed, gesture.numberOfTouches == 2 {
 			let deltaX = Float(location.x - lastPinchLocation.x)
 			let deltaY = Float(location.y - lastPinchLocation.y)
 			let cameraController = sceneView.defaultCameraController
