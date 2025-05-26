@@ -335,7 +335,7 @@ private extension UIInspector {
 		snapshot.frame = frame
 		container.addSubview(snapshot)
 
-		for (_, layer) in targetView.selfAndllVisibleSubviewsLayers.enumerated() {
+		for (_, layer) in targetView.selfAndAllVisibleSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
 				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size) else {
@@ -343,7 +343,7 @@ private extension UIInspector {
 				}
 				let view = UIView(frame: frame)
 				view.backgroundColor = .clear
-				let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap(_:)))
+				let tapGesture = JustTapGesture(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
 				rects[view] = subview
@@ -523,13 +523,17 @@ private extension UIInspector {
 
 private extension UIInspector {
 	
-	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+	@objc private func handleTap(_ gesture: JustTapGesture) {
+		print(gesture.state == .began, gesture.state == .ended)
 		guard let rect = gesture.view, let source = rects[rect] else { return }
-		didTap(on: source, rect: rect)
+		if gesture.state == .ended {
+			didTap(on: source, rect: rect)
+		}
 	}
 	
 	private func didTap(on source: UIView, rect: UIView?) {
 		guard let controller else { return }
+		feedback.selectionChanged()
 		let hostingController = DeinitHostingController(
 			rootView: Info(view: source, custom: customInfoView)
 		)
@@ -572,7 +576,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		_ gestureRecognizer: UIGestureRecognizer,
 		shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
 	) -> Bool {
-		otherGestureRecognizer is UITapGestureRecognizer
+		otherGestureRecognizer is JustTapGesture
 	}
 
 	override public func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
@@ -610,7 +614,7 @@ private extension UIInspector {
 		if gesture.state == .began {
 			draggingView = controls.bounds.contains(gesture.location(in: controls)) ? controls : nil
 			draggingStart = location
-			if draggingView != nil || !showLayers {
+			if draggingView != nil || !(showLayers && !isMagnificationEnabled && isMeasurementEnabled) {
 				feedback.selectionChanged()
 			}
 		}

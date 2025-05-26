@@ -69,7 +69,7 @@ final class UIInspector3D: UIView {
 		guard let targetView, window != nil, bounds.width > 0 && bounds.height > 0 else {
 			return
 		}
-		let groupedViews = targetView.view.selfAndllVisibleSubviewsLayers
+		let groupedViews = targetView.view.selfAndAllVisibleSubviewsLayers
 
 		// Clear existing nodes (but keep camera and lights)
 		scene.rootNode.childNodes.forEach {
@@ -350,7 +350,7 @@ final class UIInspector3D: UIView {
 		sceneView.allowsCameraControl = false
 		
 		// Add tap gesture
-		let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleTap))
+		let tapGesture = JustTapGesture(target: self, action: #selector(handleTap))
 		sceneView.addGestureRecognizer(tapGesture)
 		
 		let panGesture = UIPanGestureRecognizer(target: self, action: #selector(handlePan(_:)))
@@ -393,13 +393,13 @@ final class UIInspector3D: UIView {
 		}
 	}
 
-	@objc private func handleTap(_ gesture: UITapGestureRecognizer) {
+	@objc private func handleTap(_ gesture: JustTapGesture) {
 		let location = gesture.location(in: sceneView)
 
 		// Clear previous selection
 		clearSelection()
 
-		guard let node = convertTapToTargetView(location)?.result.node else {
+		guard let node = convertTapToTargetView(location)?.result.node, gesture.state == .ended else {
 			return
 		}
 

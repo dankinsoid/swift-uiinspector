@@ -60,7 +60,7 @@ extension UIView {
 		subviews + subviews.flatMap(\.allSubviews)
 	}
 
-	var selfAndllVisibleSubviewsLayers: [[UIView]] {
+	var selfAndAllVisibleSubviewsLayers: [[UIView]] {
 		[[self]] + allVisibleSubviewsLayers
 	}
 
