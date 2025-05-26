@@ -607,7 +607,7 @@ extension UIInspector3D {
 
 extension SCNNode {
 	
-	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 0.2) -> SCNNode? {
+	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 0.5) -> SCNNode? {
 		guard let geometry = self.geometry as? SCNPlane else { return nil }
 		
 		// Create overlay with same dimensions as the original plane

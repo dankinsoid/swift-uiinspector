@@ -1,10 +1,15 @@
 import UIKit
 
-final class JustTapGesture: UIGestureRecognizer {
+final class JustTapGesture: UIGestureRecognizer, UIGestureRecognizerDelegate {
 
 	private(set) var translation: CGPoint = .zero
 	private var lastLocation: CGPoint = .zero
 	private var startDate = Date()
+	
+	override init(target: Any?, action: Selector?) {
+		super.init(target: target, action: action)
+		delegate = self
+	}
 
 	override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent) {
 		if event.touches(for: self)?.count == 1 {
@@ -43,5 +48,9 @@ final class JustTapGesture: UIGestureRecognizer {
 
 	override func reset() {
 		translation = .zero
+	}
+	
+	func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+		true
 	}
 }

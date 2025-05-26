@@ -524,7 +524,6 @@ private extension UIInspector {
 private extension UIInspector {
 	
 	@objc private func handleTap(_ gesture: JustTapGesture) {
-		print(gesture.state == .began, gesture.state == .ended)
 		guard let rect = gesture.view, let source = rects[rect] else { return }
 		if gesture.state == .ended {
 			didTap(on: source, rect: rect)
@@ -549,7 +548,7 @@ private extension UIInspector {
 		controller.present(hostingController, animated: true)
 		if let rect {
 			UIView.animate(withDuration: 0.1) { [self] in
-				rect.backgroundColor = tintColor.withAlphaComponent(0.2)
+				rect.backgroundColor = tintColor.withAlphaComponent(0.5)
 			}
 		}
 	}
