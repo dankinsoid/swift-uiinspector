@@ -85,3 +85,17 @@ extension Optional: UIInspectorStringConvertible {
 		return "\(wrapped)"
 	}
 }
+
+extension CALayerCornerCurve: UIInspectorStringConvertible {
+
+	public var inspectorDescription: String {
+		switch self {
+		case .circular:
+			return "Circular"
+		case .continuous:
+			return "Continuous"
+		default:
+			return rawValue.capitalized
+		}
+	}
+}

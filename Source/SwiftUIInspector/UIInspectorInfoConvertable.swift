@@ -31,6 +31,9 @@ public extension UIView {
 			UIInspector.Cell("Clips to Bounds", clipsToBounds),
 			UIInspector.Cell("Is Interactable", isUserInteractionEnabled)
 		]
+		if let controller = next as? UIViewController {
+			cells.insert(UIInspector.Cell("Controller", type(of: controller)), at: 1)
+		}
 		if transform != .identity {
 			cells.append(
 				UIInspector.Cell("Transform", transform3D)
