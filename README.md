@@ -95,6 +95,30 @@ import SwiftUI
 ```
 This modifier adds a button that shows the inspector.
 
+## SwiftUI 
+To show the inspector for the specific view, you can use the `inspector(isPresented)` modifier in your SwiftUI views.
+
+```swift
+import SwiftUI
+import SwiftUIInspector
+
+struct ContentView: View {
+    @State private var showInspector = false
+
+    var body: some View {
+        VStack {
+            Text("Hello, World!")
+                .padding()
+        }
+        .inspector($showInspector)
+        .onAppear {
+            // Automatically present the inspector when the view appears
+            showInspector = true
+        }
+    }
+}
+```
+
 ## Inspector Controls
 
 The inspector provides several controls:

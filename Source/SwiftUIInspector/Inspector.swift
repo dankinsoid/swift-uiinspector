@@ -42,7 +42,7 @@ public extension View {
 }
 
 private struct InspectControllerModifier: ViewModifier {
-	
+
 	@Binding var isPresented: Bool
 	let configure: (UIInspector) -> Void
 
@@ -51,6 +51,7 @@ private struct InspectControllerModifier: ViewModifier {
 			.background(
 				Background(isPresented: $isPresented, configure: configure)
 					.allowsHitTesting(false)
+					.padding(-0.1)
 			)
 	}
 
@@ -87,16 +88,16 @@ private struct InspectControllerModifier: ViewModifier {
 		func makeCoordinator() -> Coordinator {
 			Coordinator()
 		}
-		
+
 		final class Coordinator {
-			
+
 			weak var inspector: UIInspectorController?
 			var wasPresented = false
 		}
 	}
 }
 
-extension View {
+public extension View {
 
 	/// Adds a button to show the inspector in the specified alignment.
 	///
@@ -105,7 +106,7 @@ extension View {
 	///
 	/// - Warning: This modifier works only on iOS simulators.
 	@ViewBuilder
-	public func previewInspector(
+	func previewInspector(
 		alignment: Alignment = .bottomTrailing
 	) -> some View {
 		modifier(ShowInspectorModifier(alignment: alignment))
@@ -116,7 +117,7 @@ private struct ShowInspectorModifier: ViewModifier {
 
 	let alignment: Alignment
 	@State private var inspectorPresented = false
-	
+
 	func body(content: Content) -> some View {
 		#if targetEnvironment(simulator)
 		content
@@ -161,4 +162,3 @@ private struct ShowInspectorModifier: ViewModifier {
 		#endif
 	}
 }
-
