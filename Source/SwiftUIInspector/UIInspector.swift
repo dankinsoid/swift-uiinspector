@@ -578,18 +578,14 @@ private extension UIInspector {
 		)
 		hostingController.onDeinit = { [weak self] in
 			self?.inspector3D.clearSelection()
-			if let rect {
-				self?.unselect()
-			}
+			self?.unselect()
 		}
 		if #available(iOS 15.0, *) {
 			hostingController.sheetPresentationController?.detents = [.medium(), .large()]
 		}
 		controller.present(hostingController, animated: true)
 		if let rect {
-			UIView.animate(withDuration: 0.1) { [self] in
-				rect.backgroundColor = tintColor.withAlphaComponent(0.5)
-			}
+			select(rect: rect)
 		}
 	}
 
