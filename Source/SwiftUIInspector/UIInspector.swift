@@ -67,7 +67,7 @@ public final class UIInspector: UIView {
 	/// - Parameter view: The view being inspected
 	/// - Returns: A SwiftUI view wrapped in `AnyView`
 	public var customInfoView: (UIView) -> AnyView = { _ in AnyView(EmptyView()) }
-	
+
 	/// Defines the animation duration for the inspector's update.
 	public var showUpdateAnimation = true
 
@@ -89,7 +89,7 @@ public final class UIInspector: UIView {
 	private let inspector3D = UIInspector3D()
 	private let animationView = UIView()
 
-	private(set) public weak var targetView: UIView?
+	public private(set) weak var targetView: UIView?
 	var inspectTargetRect: CGRect?
 	private var rects: [UIView: UIView] = [:]
 	private var hiddenRects: Set<UIView> = []
@@ -109,7 +109,7 @@ public final class UIInspector: UIView {
 	private var hex = ""
 	private var isFirstAppear = true
 	private var controlsOffset: CGPoint = .zero
-	
+
 	private var isMagnificationEnabled = false {
 		didSet {
 			guard isMagnificationEnabled != oldValue else { return }
@@ -128,22 +128,22 @@ public final class UIInspector: UIView {
 			if isPipetteeEnabled {
 				isMeasurementEnabled = false
 			}
-#if targetEnvironment(simulator)
+			#if targetEnvironment(simulator)
 			scroll.isScrollEnabled = !isPipetteeEnabled
-#endif
+			#endif
 			updateButtons()
 		}
 	}
-	
+
 	private var isMeasurementEnabled = true {
 		didSet {
 			guard isMeasurementEnabled != oldValue else { return }
 			if isMeasurementEnabled {
 				isPipetteeEnabled = false
 			}
-#if targetEnvironment(simulator)
+			#if targetEnvironment(simulator)
 			scroll.isScrollEnabled = !isMeasurementEnabled
-#endif
+			#endif
 			updateButtons()
 		}
 	}
@@ -169,8 +169,8 @@ public final class UIInspector: UIView {
 							scroll.zoomScale = 1
 						} completion: { [self] _ in
 							inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
-							 inspector3D.isHidden = false
-						 }
+								inspector3D.isHidden = false
+							}
 						}
 					} else {
 						inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
@@ -199,10 +199,10 @@ public final class UIInspector: UIView {
 		background.tintColor = tintColor
 		selectionView.backgroundColor = tintColor.withAlphaComponent(0.5)
 		measurementLabel.textColor = tintColor
-		
+
 		inspector3D.tintColor = tintColor
 		clipsToBounds = true
-	
+
 		snapshot.layer.magnificationFilter = .nearest
 		snapshot.isUserInteractionEnabled = false
 		snapshot.contentMode = .scaleToFill
@@ -227,9 +227,9 @@ public final class UIInspector: UIView {
 		inspector3D.notifyViewSelected = { [weak self] view in
 			self?.didTap(on: view, rect: nil)
 		}
-		
+
 		animationView.backgroundColor = .white
-	
+
 		addControls()
 		addDragGesture()
 	}
@@ -256,7 +256,7 @@ public final class UIInspector: UIView {
 		measurementLabel.textColor = tintColor
 		background.tintColor = tintColor
 	}
-	
+
 	/// Inspects the specified view, showing its hierarchy and properties.
 	///
 	/// This method captures the view's current state and displays it in the inspector.
@@ -342,8 +342,9 @@ private extension UIInspector {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
 				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size),
-					  insideRect(subview),
-					  !subview.needIgnoreInInspector else {
+				      insideRect(subview),
+				      !subview.needIgnoreInInspector
+				else {
 					continue
 				}
 				let view = UIView(frame: frame)
@@ -508,11 +509,11 @@ private extension UIInspector {
 			updateWidth(grid: grid, width: gridWidth)
 		}
 	}
-	
+
 	func isSameGrid(_ value1: CGFloat, _ value2: CGFloat) -> Bool {
 		abs(value1 - value2) < 1 / UIScreen.main.scale
 	}
-	
+
 	func updateWidth(grid: UIGrid, width: CGFloat) {
 		switch grid.axis {
 		case .horizontal:
@@ -532,14 +533,14 @@ private extension UIInspector {
 }
 
 private extension UIInspector {
-	
+
 	@objc private func handleTap(_ gesture: JustTapGesture) {
 		guard let rect = gesture.view, let source = rects[rect] else { return }
 		if gesture.state == .ended {
 			didTap(on: source, rect: rect)
 		}
 	}
-	
+
 	private func didTap(on source: UIView, rect: UIView?) {
 		guard let controller else { return }
 		feedback.selectionChanged()
@@ -665,7 +666,7 @@ private extension UIInspector {
 				addColorPicker(at: location, pixel: pixel)
 			}
 			updateColorPicker(at: location, pixel: pixel)
-			
+
 			if gesture.state.isFinal {
 				UIPasteboard.general.string = hex
 				updateColorPicker(at: location, pixel: pixel, text: "COPIED!")
@@ -675,7 +676,7 @@ private extension UIInspector {
 			}
 		}
 	}
-	
+
 	func drawSelectionRectGesture(
 		_ gesture: UILongPressGestureRecognizer,
 		location: CGPoint
@@ -719,12 +720,13 @@ private extension UIInspector {
 					height: abs(translation.y)
 				)
 			)
-		    
-			if !showLayers || isMagnificationEnabled { 
+
+			if !showLayers || isMagnificationEnabled {
 				selectionView.frame = rect
 			} else
-				if let p0 = inspector3D.convertFromTarget(startPoint),
-				   let p1 = inspector3D.convertFromTarget(endPoint) {
+			if let p0 = inspector3D.convertFromTarget(startPoint),
+			   let p1 = inspector3D.convertFromTarget(endPoint)
+			{
 				rect = CGRect(
 					origin: CGPoint(
 						x: min(p0.x, p1.x),
@@ -784,14 +786,14 @@ private extension UIInspector {
 		controls.tintColor = tintColor
 		var buttons: [UIInspectorControls.Button] = [
 			UIInspectorControls.Button(
-				selectedIcon: UIImage(systemName: "square.3.layers.3d.top.filled"),
-				unselectedIcon: UIImage(systemName: "square.3.layers.3d"),
+				selectedIcon: UIImage(systemName: "square.stack.3d.down.right.fill"),
+				unselectedIcon: UIImage(systemName: "square.stack.3d.down.right"),
 				isSelected: showLayers
 			) { [weak self] in
 				self?.showLayers.toggle()
-			}
+			},
 		]
-#if targetEnvironment(simulator)
+		#if targetEnvironment(simulator)
 		buttons.append(
 			UIInspectorControls.Button(
 				icon: UIImage(systemName: "arrow.up.left.and.down.right.magnifyingglass"),
@@ -800,7 +802,7 @@ private extension UIInspector {
 				self?.isMagnificationEnabled.toggle()
 			}
 		)
-#endif
+		#endif
 		buttons += [
 			UIInspectorControls.Button(
 				selectedIcon: UIImage(systemName: "eyedropper.full"),
@@ -812,8 +814,8 @@ private extension UIInspector {
 				isPipetteeEnabled.toggle()
 			},
 			UIInspectorControls.Button(
-				selectedIcon: UIImage(systemName: "pencil.and.ruler.fill"),
-				unselectedIcon: UIImage(systemName: "pencil.and.ruler"),
+				selectedIcon: UIImage(systemName: "ruler.fill"),
+				unselectedIcon: UIImage(systemName: "ruler"),
 				isSelected: isMeasurementEnabled,
 				isEnabled: !showLayers && !isMagnificationEnabled
 			) { [weak self] in
@@ -846,19 +848,19 @@ private extension UIInspector {
 }
 
 private extension UIInspector {
-	
+
 	var viewsToDisableDuringMagnification: [UIView] {
 		[inspector3D, scroll, container]
 	}
-	
+
 	func enableMagnification() {
-		viewsToDisableDuringMagnification.forEach { view in
+		for view in viewsToDisableDuringMagnification {
 			view.isUserInteractionEnabled = false
 		}
 	}
-	
+
 	func disableMagnification() {
-		viewsToDisableDuringMagnification.forEach { view in
+		for view in viewsToDisableDuringMagnification {
 			view.isUserInteractionEnabled = true
 		}
 	}
@@ -940,7 +942,7 @@ private extension UIInspector {
 			.imageScale(.large)
 			.foregroundColor(.blue)
 		Text("Hello, world!")
-		
+
 		Button("Show Inspector") {
 			UIInspectorController.present()
 		}
