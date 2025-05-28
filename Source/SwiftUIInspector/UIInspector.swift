@@ -446,10 +446,11 @@ private extension UIInspector {
 		guard showGrid else { return snapshot.convert(point, to: self) }
 		let sortedX = gridViews
 			.filter { isVisible($0) && $0.axis == .horizontal }
+			.map { $0.convert($0.bounds, to: snapshot).midX }
 			.sorted {
-				abs($0.grid - point.x) < abs($1.grid - point.x)
+				abs($0 - point.x) < abs($1 - point.x)
 			}
-		let closestX = sortedX.first?.grid ?? point.x
+		let closestX = sortedX.first ?? point.x
 //		sortedX
 //			.first {
 //				min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0
@@ -457,11 +458,12 @@ private extension UIInspector {
 
 		let sortedY = gridViews
 			.filter { isVisible($0) && $0.axis == .vertical }
+			.map { $0.convert($0.bounds, to: snapshot).midY }
 			.sorted {
-				abs($0.grid - point.y) < abs($1.grid - point.y)
+				abs($0 - point.y) < abs($1 - point.y)
 			}
 
-		let closestY = sortedY.first?.grid ?? point.y
+		let closestY = sortedY.first ?? point.y
 //		sortedY
 //			.first {
 //				min(point.x - $0.frame.minX, $0.frame.maxX - point.x) > 0
