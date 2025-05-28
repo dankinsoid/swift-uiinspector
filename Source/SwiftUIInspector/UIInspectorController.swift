@@ -64,10 +64,11 @@ public final class UIInspectorController: UIViewController {
 	///
 	/// - Parameters:
 	///   - view: Optional view to inspect. If nil, the root view of the top view controller is used.
+	///   - globalRect: Optional CGRect specifying the area to inspect in global coordinates.
 	///   - configure: A closure to configure the inspector before it's displayed.
 	/// - Returns: The presented inspector controller, or nil if presentation failed.
 	@discardableResult
-	public static func present(for view: UIView? = nil, configure: @escaping (UIInspector) -> Void = { _ in }) -> UIInspectorController? {
+	public static func present(for view: UIView? = nil, at globalRect: CGRect? = nil, configure: @escaping (UIInspector) -> Void = { _ in }) -> UIInspectorController? {
 		guard let top = UIWindow.key?.rootViewController?.topPresented else { return nil }
 		var isCurrent = false
 		let inspector: UIInspectorController
@@ -81,7 +82,7 @@ public final class UIInspectorController: UIViewController {
 		DispatchQueue.main.async {
 			if isCurrent {
 				if let view {
-					inspector.inspect(view: view)
+					inspector.inspect(view: view, at: globalRect.map { view.convert($0, from: nil) })
 				} else {
 					inspector.inspector.update()
 				}
@@ -89,7 +90,7 @@ public final class UIInspectorController: UIViewController {
 			}
 			top.present(inspector, animated: false)
 			if let targetView = view ?? top.view {
-				inspector.inspect(view: targetView)
+				inspector.inspect(view: targetView, at: globalRect.map { targetView.convert($0, from: nil) })
 			}
 		}
 		return inspector
@@ -130,8 +131,10 @@ public final class UIInspectorController: UIViewController {
 
 	/// Inspects the specified view using this controller's inspector.
 	///
-	/// - Parameter view: The view to inspect
-	public func inspect(view: UIView) {
-		inspector.inspect(view: view)
+	/// - Parameters:
+	///  - view: The view to inspect
+	///  - rect: Optional CGRect specifying the area to inspect. If nil, the entire view is inspected.
+	public func inspect(view: UIView, at rect: CGRect? = nil) {
+		inspector.inspect(view: view, at: rect)
 	}
 }

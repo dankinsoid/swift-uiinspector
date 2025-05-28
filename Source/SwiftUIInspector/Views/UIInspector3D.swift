@@ -5,6 +5,7 @@ import simd
 final class UIInspector3D: UIView {
 	
 	private(set) var targetView: ViewItem?
+	private var inspectTargetRect: CGRect?
 	private var selectedNode: SCNNode?
 	private let sceneView = SCNView()
 	private let scene = SCNScene()
@@ -43,8 +44,9 @@ final class UIInspector3D: UIView {
 		fatalError("init(coder:) has not been implemented")
 	}
 	
-	func inspect(view: UIView, animate: Bool = false, whenReady: (() -> Void)? = nil) {
+	func inspect(view: UIView, in rect: CGRect?, animate: Bool = false, whenReady: (() -> Void)? = nil) {
 		targetView = ViewItem(view)
+		inspectTargetRect = rect
 		update(animate: animate, whenReady: whenReady)
 	}
 	
@@ -90,7 +92,7 @@ final class UIInspector3D: UIView {
 		// Process each depth level
 		var i = 0
 		for views in groupedViews {
-			for (j, view) in views.enumerated() {
+			for (j, view) in views.filter({ insideRect($0) && !$0.needIgnoreInInspector }).enumerated() {
 				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
 				scene.rootNode.addChildNode(node)
 				viewNodes[node] = ViewItem(view)
@@ -478,6 +480,14 @@ final class UIInspector3D: UIView {
 		
 		// Clear selection
 		selectedNode = nil
+	}
+}
+
+extension UIInspector3D {
+
+	func insideRect(_ view: UIView) -> Bool {
+		guard let inspectTargetRect, let targetView, targetView.view !== view else { return true }
+		return inspectTargetRect.contains(view.convert(view.bounds, to: targetView.view))
 	}
 }
 

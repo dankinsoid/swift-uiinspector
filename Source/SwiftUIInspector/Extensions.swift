@@ -52,12 +52,26 @@ extension CGRect {
 		let y = min(max(minY, rect.minY), rect.maxY - height)
 		return CGRect(x: x, y: y, width: width, height: height)
 	}
+
+	func contains(_ rect: CGRect) -> Bool {
+		minX <= rect.minX && maxX >= rect.maxX && minY <= rect.minY && maxY >= rect.maxY
+	}
 }
 
 extension UIView {
 
 	var allSubviews: [UIView] {
 		subviews + subviews.flatMap(\.allSubviews)
+	}
+
+	var ancestors: [UIView] {
+		var views: [UIView] = [self]
+		var currentView: UIView? = superview
+		while let view = currentView {
+			views.append(view)
+			currentView = view.superview
+		}
+		return views
 	}
 
 	var selfAndAllVisibleSubviewsLayers: [[UIView]] {

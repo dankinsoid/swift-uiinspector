@@ -4,6 +4,7 @@ import SwiftUIInspector
 struct ContentView: View {
 
     @State private var selectedColor: Color = .blue
+	@State private var isInspectorPresented = false
     
     let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .pink]
     
@@ -78,7 +79,7 @@ struct ContentView: View {
 				.padding(.horizontal)
 				
 				Button("Inspect Grid") {
-					UIInspectorController.present()
+					isInspectorPresented = true
 				}
 				.padding()
 				.background(selectedColor)

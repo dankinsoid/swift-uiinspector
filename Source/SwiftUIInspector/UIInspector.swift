@@ -90,6 +90,7 @@ public final class UIInspector: UIView {
 	private let animationView = UIView()
 
 	private(set) public weak var targetView: UIView?
+	var inspectTargetRect: CGRect?
 	private var rects: [UIView: UIView] = [:]
 	private var hiddenRects: Set<UIView> = []
 
@@ -167,12 +168,12 @@ public final class UIInspector: UIView {
 						UIView.animate(withDuration: 0.2) { [self] in
 							scroll.zoomScale = 1
 						} completion: { [self] _ in
-							inspector3D.inspect(view: targetView, animate: true) { [self] in
+							inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
 							 inspector3D.isHidden = false
 						 }
 						}
 					} else {
-						inspector3D.inspect(view: targetView, animate: true) { [self] in
+						inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
 							inspector3D.isHidden = false
 						}
 					}
@@ -259,9 +260,12 @@ public final class UIInspector: UIView {
 	/// Inspects the specified view, showing its hierarchy and properties.
 	///
 	/// This method captures the view's current state and displays it in the inspector.
-	/// - Parameter view: The view to inspect
-	public func inspect(view: UIView) {
+	/// - Parameters:
+	///  - view: The view to inspect
+	///  - rect: An optional rectangle within the view to focus on.
+	public func inspect(view: UIView, at rect: CGRect? = nil) {
 		targetView = view
+		inspectTargetRect = rect
 		update()
 	}
 
@@ -312,7 +316,6 @@ private extension UIInspector {
 
 	func _update(reset: Bool = false) {
 		guard let targetView, window != nil else { return }
-
 		if reset {
 			feedback.selectionChanged()
 			scroll.zoomScale = 1
@@ -329,7 +332,7 @@ private extension UIInspector {
 		hiddenRects.removeAll()
 
 		container.subviews.forEach { $0.removeFromSuperview() }
-		let viewForSnapshot = targetView//viewForSnapshot(of: targetView)
+		let viewForSnapshot = targetView
 		snapshot.image = viewForSnapshot.snapshotImage()
 		let frame = viewForSnapshot.convert(viewForSnapshot.bounds, to: container)
 		snapshot.frame = frame
@@ -338,7 +341,9 @@ private extension UIInspector {
 		for (_, layer) in targetView.selfAndAllVisibleSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
-				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size) else {
+				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size),
+					  insideRect(subview),
+					  !subview.needIgnoreInInspector else {
 					continue
 				}
 				let view = UIView(frame: frame)
@@ -471,7 +476,12 @@ private extension UIInspector {
 		view.convert(view.bounds, to: container)
 			.intersects(convert(bounds, to: container))
 	}
-	
+
+	func insideRect(_ view: UIView) -> Bool {
+		guard let inspectTargetRect, let targetView, targetView !== view else { return true }
+		return inspectTargetRect.contains(view.convert(view.bounds, to: targetView))
+	}
+
 	func highlightGrid(points: [CGPoint]) {
 		guard showGrid else { return }
 		let currentHighlighted = highlightedGrid
