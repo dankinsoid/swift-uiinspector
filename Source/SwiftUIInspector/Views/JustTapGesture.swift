@@ -33,7 +33,7 @@ final class JustTapGesture: UIGestureRecognizer, UIGestureRecognizerDelegate {
 	}
 
 	override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent) {
-		if Date().timeIntervalSince(startDate) < 0.2, max(abs(translation.x), abs(translation.y)) < 5 {
+		if Date().timeIntervalSince(startDate) < 0.15, max(abs(translation.x), abs(translation.y)) < 5 {
 			state = .ended
 		} else {
 			state = .failed

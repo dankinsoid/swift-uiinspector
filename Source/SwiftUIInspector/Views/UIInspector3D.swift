@@ -606,25 +606,32 @@ extension UIInspector3D {
 }
 
 extension SCNNode {
-	
+
 	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 0.5) -> SCNNode? {
 		guard let geometry = self.geometry as? SCNPlane else { return nil }
-		
-		// Create overlay with same dimensions as the original plane
-		let overlayGeometry = SCNPlane(width: geometry.width, height: geometry.height)
-		
+
+		let overlayGeometry = SCNBox(
+			width: geometry.width,
+			height: geometry.height,
+			length: 1,
+			chamferRadius: 0
+		)
+
 		let material = SCNMaterial()
 		material.diffuse.contents = color
 		material.transparency = alpha
+		material.transparencyMode = .dualLayer // better for overlapping transparent geometry
 		material.lightingModel = .constant
 		material.isDoubleSided = true
-		
+		material.writesToDepthBuffer = false // important for transparency
+		material.readsFromDepthBuffer = false
+
 		overlayGeometry.materials = [material]
-		
+
 		let overlayNode = SCNNode(geometry: overlayGeometry)
-		// Position at the same location as parent, just slightly in front
-		overlayNode.position = SCNVector3(0, 0, 0.2)
-		
+		overlayNode.position = SCNVector3(0, 0, 0)
+		overlayNode.renderingOrder = 10 // ensure it's rendered after inner content
+
 		overlayNode.categoryBitMask = 2
 		addChildNode(overlayNode)
 		return overlayNode

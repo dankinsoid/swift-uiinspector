@@ -600,7 +600,7 @@ private extension UIInspector {
 		drag.minimumPressDuration = 0
 		scroll.isScrollEnabled = false
 		#else
-		drag.minimumPressDuration = 0.1
+		drag.minimumPressDuration = 0.15
 		#endif
 		drag.cancelsTouchesInView = false
 		drag.delaysTouchesBegan = false
