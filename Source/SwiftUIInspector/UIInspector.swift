@@ -89,12 +89,12 @@ public final class UIInspector: UIView {
 	private lazy var measurementLabel = UIMeasurementLabel()
 	private let inspector3D = UIInspector3D()
 	private let animationView = UIView()
+	private var selectedRect: (any ViewRect)?
 
 	public private(set) weak var targetView: UIView?
 	var inspectTargetRect: CGRect?
-	private var rects: [UIView: UIView] = [:]
+	private var rects: [UIViewRect] = []
 	private var hiddenRects: Set<UIView> = []
-	private var selectedRect: Set<UIView> = []
 
 	private let gridContainer = UIView()
 	private let gridWidth: CGFloat = 2.0 / UIScreen.main.scale
@@ -226,8 +226,8 @@ public final class UIInspector: UIView {
 		addSubview(gridContainer)
 		addSubview(inspector3D)
 		inspector3D.isHidden = true
-		inspector3D.notifyViewSelected = { [weak self] view in
-			self?.didTap(on: view, rect: nil)
+		inspector3D.notifyViewSelected = { [weak self] view, parents in
+			self?.didTap(on: view, underlying: parents)
 		}
 
 		animationView.backgroundColor = .white
@@ -332,8 +332,6 @@ private extension UIInspector {
 
 		rects.removeAll()
 		hiddenRects.removeAll()
-		unselect()
-
 		container.subviews.forEach { $0.removeFromSuperview() }
 		let viewForSnapshot = targetView
 		snapshot.image = viewForSnapshot.snapshotImage()
@@ -350,12 +348,12 @@ private extension UIInspector {
 				else {
 					continue
 				}
-				let view = UIView(frame: frame)
-				view.backgroundColor = .clear
+				let view = UIViewRect(subview, frame: frame)
+				view.tintColor = tintColor
 				let tapGesture = JustTapGesture(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
-				rects[view] = subview
+				rects.append(view)
 			}
 		}
 		updateGrid()
@@ -387,7 +385,7 @@ private extension UIInspector {
 
 	func updateGrid() {
 		removeGrid()
-		let rects = [container] + rects.keys
+		let rects = [container] + rects
 		for rect in rects {
 			for x in [rect.frame.minX, rect.frame.maxX] {
 				let line = UIGrid()
@@ -540,71 +538,49 @@ private extension UIInspector {
 private extension UIInspector {
 
 	@objc private func handleTap(_ gesture: JustTapGesture) {
-		guard let rect = gesture.view, let source = rects[rect] else { return }
+		guard let rect = gesture.view as? UIViewRect else { return }
 		let deeps = Dictionary(
 			container
 				.subviews
+				.compactMap { $0 as? UIViewRect }
 				.enumerated()
 				.map { ($0.element, $0.offset) }
 		) { _, n in n }
 		if gesture.state == .ended {
 			didTap(
-				on: source,
-				rect: rect,
+				on: rect,
 				underlying: rects.filter {
-					$0.key !== rect && $0.key.bounds.contains(gesture.location(in: $0.key))
+					$0 !== rect && $0.bounds.contains(gesture.location(in: $0))
 				}
-				.sorted { deeps[$0.key, default: 0] > deeps[$1.key, default: 0] }
+				.sorted { deeps[$0, default: 0] > deeps[$1, default: 0] }
 			)
 		}
 	}
 
-	private func didTap(on source: UIView, rect: UIView?, underlying: [(UIView, UIView)] = []) {
+	private func didTap(on rect: any ViewRect, underlying: [any ViewRect]) {
 		guard let controller else { return }
 		feedback.selectionChanged()
-		var dict = Dictionary(underlying.map { ($0.1, $0.0) }, uniquingKeysWith: { _, n in n })
-		dict[source] = rect
+		var dict = Dictionary(underlying.map { ($0.source, $0) }, uniquingKeysWith: { _, n in n })
+		dict[rect.source] = rect
 		let hostingController = DeinitHostingController(
 			rootView: Info(
-				view: source,
-				underlying: underlying.map(\.1),
+				view: rect,
+				underlying: underlying,
 				custom: customInfoView
 			) { [weak self] in
-				if let rect = dict[$0] {
-					self?.select(rect: rect)
-				} else {
-					self?.unselect()
-				}
+				self?.selectedRect = $0
 			}
 		)
 		hostingController.onDeinit = { [weak self] in
-			self?.inspector3D.clearSelection()
-			self?.unselect()
+			self?.selectedRect?.unhighlight()
+			self?.selectedRect = nil
 		}
 		if #available(iOS 15.0, *) {
 			hostingController.sheetPresentationController?.detents = [.medium(), .large()]
 		}
 		controller.present(hostingController, animated: true)
-		if let rect {
-			select(rect: rect)
-		}
-	}
-
-	private func select(rect: UIView) {
-		unselect()
-		selectedRect.insert(rect)
-		UIView.animate(withDuration: 0.1) { [self] in
-			rect.backgroundColor = tintColor.withAlphaComponent(0.5)
-		}
-	}
-
-	private func unselect() {
-		UIView.animate(withDuration: 0.1) { [selectedRect] in
-			selectedRect.forEach { rect in
-				rect.backgroundColor = .clear
-			}
-		}
-		selectedRect = []
+		rect.highlight()
+		selectedRect = rect
 	}
 }
 

@@ -4,22 +4,22 @@ extension UIInspector {
 
 	struct Info: View {
 
-		let view: UIView
-		let underlying: [UIView]
+		let view: any ViewRect
+		let underlying: [any ViewRect]
 		let custom: (UIView) -> AnyView
-		let onSelect: (UIView) -> Void
-		@State private var selected: ObjectIdentifier
+		let onSelect: (any ViewRect) -> Void
+		@State private var selected: any ViewRect
 	
-		init(view: UIView, underlying: [UIView], custom: @escaping (UIView) -> AnyView, onSelect: @escaping (UIView) -> Void) {
+		init(view: any ViewRect, underlying: [any ViewRect], custom: @escaping (UIView) -> AnyView, onSelect: @escaping (any ViewRect) -> Void) {
 			self.view = view
 			self.underlying = underlying
 			self.custom = custom
 			self.onSelect = onSelect
-			_selected = State(initialValue: view.objectID)
+			_selected = State(initialValue: view)
 		}
 	
 		var selectedView: UIView {
-			([view] + underlying).first(where: { $0.objectID == selected }) ?? view
+			([view] + underlying).first(where: { $0.source === selected.source })?.source ?? view.source
 		}
 		
 		var info: [UIInspector.Section] {
@@ -33,18 +33,20 @@ extension UIInspector {
 					if !underlying.isEmpty {
 						ScrollView(.horizontal, showsIndicators: false) {
 							HStack(spacing: 0) {
-								ForEach([view] + underlying, id: \.objectID) { view in
+								ForEach([view] + underlying, id: \.source.objectID) { view in
 									Button {
-										selected = view.objectID
+										selected.unhighlight()
+										selected = view
+										selected.highlight()
 										onSelect(view)
 									} label: {
-										title(for: view)
-											.foregroundColor(view.objectID == selected ? .accentColor : .secondary)
+										title(for: view.source)
+											.foregroundColor(view.source === selected.source ? .accentColor : .secondary)
 											.padding(4)
 											.frame(maxHeight: .infinity)
 											.contentShape(.rect)
 									}
-									if view !== underlying.last {
+									if view.source !== underlying.last?.source {
 										Text("❯")
 											.foregroundColor(.secondary)
 									}
@@ -75,7 +77,7 @@ extension UIInspector {
 								Text(section.title)
 							}
 						}
-						custom(view)
+						custom(view.source)
 					}
 				}
 				.navigationBarTitle("")

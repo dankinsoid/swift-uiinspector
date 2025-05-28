@@ -4,16 +4,15 @@ import SwiftUI
 
 final class UIInspector3D: UIView {
 
-	private(set) var targetView: ViewItem?
+	private(set) weak var targetView: UIView?
+	private(set) var targetNode: SCNViewRect?
 	private var inspectTargetRect: CGRect?
-	private var selectedNode: SCNNode?
 	private let sceneView = SCNView()
 	private let scene = SCNScene()
-	private var viewNodes: [SCNNode: ViewItem] = [:]
-	private var targetNode: SCNNode?
+	private var viewNodes: [SCNViewRect] = []
 	private var highlightNodes: Set<SCNNode> = []
 	private var borderOverlayNodes: Set<SCNNode> = []
-	var notifyViewSelected: ((UIView) -> Void)?
+	var notifyViewSelected: (any ViewRect, [any ViewRect]) -> Void = { _, _ in }
 
 	// Animation properties
 	private var isAnimating = false
@@ -46,7 +45,7 @@ final class UIInspector3D: UIView {
 	}
 
 	func inspect(view: UIView, in rect: CGRect?, animate: Bool = false, whenReady: (() -> Void)? = nil) {
-		targetView = ViewItem(view)
+		targetView = view
 		inspectTargetRect = rect
 		update(animate: animate, whenReady: whenReady)
 	}
@@ -72,7 +71,7 @@ final class UIInspector3D: UIView {
 		guard let targetView, window != nil, bounds.width > 0, bounds.height > 0 else {
 			return
 		}
-		let groupedViews = targetView.view.selfAndAllVisibleSubviewsLayers
+		let groupedViews = targetView.selfAndAllVisibleSubviewsLayers
 
 		// Clear existing nodes (but keep camera and lights)
 		for childNode in scene.rootNode.childNodes {
@@ -96,12 +95,13 @@ final class UIInspector3D: UIView {
 			for (j, view) in views.filter({ insideRect($0) && !$0.needIgnoreInInspector }).enumerated() {
 				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
 				scene.rootNode.addChildNode(node)
-				viewNodes[node] = ViewItem(view)
+				viewNodes.append(node)
+				if view === targetView {
+					targetNode = node
+				}
 			}
 			i += views.count
 		}
-
-		targetNode = viewNodes.first(where: { $0.value.view === targetView.view })?.key
 
 		// Force scene view to update
 		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
@@ -297,7 +297,7 @@ final class UIInspector3D: UIView {
 		return SCNVector3(sum.x / count, sum.y / count, sum.z / count)
 	}
 
-	private func createNodeForView(_ view: UIView, depth: Double) -> SCNNode {
+	private func createNodeForView(_ view: UIView, depth: Double) -> SCNViewRect {
 		// Create geometry
 		let width = max(view.bounds.width, 1) // Ensure minimum size
 		let height = max(view.bounds.height, 1)
@@ -313,20 +313,20 @@ final class UIInspector3D: UIView {
 		geometry.firstMaterial?.isDoubleSided = true
 		geometry.firstMaterial?.lightingModel = .constant
 
-		let node = SCNNode(geometry: geometry)
+		let node = SCNViewRect(view, tintColor: tintColor, geometry: geometry)
 		borderOverlayNodes.formUnion(node.addBorderOverlay(color: tintColor, hidden: !showBorderOverlay))
 
 		// Position in 3D space - CENTER THE COMPOSITION
-		guard let targetView else {
+		guard let targetNode else {
 			node.position = SCNVector3(0, 0, CGFloat(depth * 50))
 			return node
 		}
 
 		// Convert view position to targetView coordinate system
-		let viewFrameInTarget = view.superview?.convert(view.frame, to: targetView.view) ?? view.convert(view.bounds, to: targetView.view)
+		let viewFrameInTarget = view.superview?.convert(view.frame, to: targetNode.source) ?? view.convert(view.bounds, to: targetNode.source)
 
 		// Calculate position relative to targetView center
-		let targetCenter = CGPoint(x: targetView.bounds.midX, y: targetView.bounds.midY)
+		let targetCenter = CGPoint(x: targetNode.bounds.midX, y: targetNode.bounds.midY)
 		let viewCenter = CGPoint(x: viewFrameInTarget.midX, y: viewFrameInTarget.midY)
 
 		// Center around origin (0,0,0)
@@ -339,15 +339,7 @@ final class UIInspector3D: UIView {
 		return node
 	}
 
-	/// 1. View selection and highlighting
-	private func highlightNode(_ node: SCNNode) {
-		selectedNode = node
-		if let highligh = node.addRectOverlay(color: tintColor) {
-			highlightNodes.insert(highligh)
-		}
-	}
-
-	/// 3. Interactive debugging
+	/// 2. Interactive debugging
 	func setupInteractions() {
 		// Enable camera controls
 		sceneView.allowsCameraControl = false
@@ -399,22 +391,19 @@ final class UIInspector3D: UIView {
 	@objc private func handleTap(_ gesture: JustTapGesture) {
 		let location = gesture.location(in: sceneView)
 
-		// Clear previous selection
-		clearSelection()
-
-		guard let node = convertTapToTargetView(location)?.result.node, gesture.state == .ended else {
+		guard let node = convertTapToTargetView(location)?.result.node as? SCNViewRect, gesture.state == .ended else {
 			return
 		}
 
-		selectedNode = node
-		animate(duration: 0.1) {
-			highlightNode(node)
+		let dict = viewNodes.reduce(into: [UIView: any ViewRect]()) { result, view in
+			result[view.source] = view
 		}
-
+	
 		// Find corresponding UIView
-		if let view = viewNodes[node] {
-			notifyViewSelected?(view.view)
-		}
+		notifyViewSelected(
+			node,
+			node.source.ancestors.dropFirst().compactMap { dict[$0] }
+		)
 	}
 
 	@objc func handlePan(_ gesture: UIPanGestureRecognizer) {
@@ -466,29 +455,13 @@ final class UIInspector3D: UIView {
 		)
 		gesture.setTranslation(.zero, in: sceneView)
 	}
-
-	func clearSelection() {
-		// Remove highlight from previously selected node
-		if let selectedNode {
-			animate(duration: 0.1) {
-				selectedNode.geometry?.firstMaterial?.emission.contents = UIColor.black
-			}
-		}
-
-		// Remove any outline nodes we added
-		highlightNodes.forEach { $0.removeFromParentNode() }
-		highlightNodes.removeAll()
-
-		// Clear selection
-		selectedNode = nil
-	}
 }
 
 extension UIInspector3D {
 
 	func insideRect(_ view: UIView) -> Bool {
-		guard let inspectTargetRect, let targetView, targetView.view !== view else { return true }
-		return inspectTargetRect.contains(view.convert(view.bounds, to: targetView.view))
+		guard let inspectTargetRect, let targetNode, targetNode.source !== view else { return true }
+		return inspectTargetRect.contains(view.convert(view.bounds, to: targetNode.source))
 	}
 }
 
@@ -583,32 +556,32 @@ extension UIInspector3D {
 extension UIInspector3D {
 
 	func convertTapToTargetView(_ location: CGPoint) -> (location: CGPoint, result: SCNHitTestResult)? {
-		guard let targetView else { return nil }
+		guard let targetNode else { return nil }
 		let location = convert(location, to: sceneView)
 		let hitResults = sceneView.hitTest(location, options: [.categoryBitMask: 1])
 
 		if let hitResult = hitResults.first(
 			where: {
-				viewNodes[$0.node]?.frame.size.isVisible == true && $0.node.geometry is SCNPlane
+				($0.node as? SCNViewRect)?.bounds.size.isVisible == true && $0.node.geometry is SCNPlane
 			}
 		),
-			let view = viewNodes[hitResult.node]
+		   let view = hitResult.node as? SCNViewRect
 		{
 			let localHit = CGPoint(
 				x: CGFloat(hitResult.localCoordinates.x) + view.bounds.midX,
 				y: view.bounds.midY - CGFloat(hitResult.localCoordinates.y)
 			)
-			return (view.convert(localHit, to: targetView), hitResult)
+			return (view.convert(localHit, to: targetNode), hitResult)
 		}
 		return nil
 	}
 
 	func convertFromTarget(_ location: CGPoint) -> CGPoint? {
-		guard let targetNode, let targetView else { return nil }
+		guard let targetNode else { return nil }
 		let position = targetNode.convertPosition(
 			SCNVector3(
-				location.x - targetView.size.width / 2,
-				targetView.size.height / 2 - location.y,
+				location.x - targetNode.size.width / 2,
+				targetNode.size.height / 2 - location.y,
 				0
 			),
 			to: nil
@@ -619,36 +592,6 @@ extension UIInspector3D {
 }
 
 extension SCNNode {
-
-	func addRectOverlay(color: UIColor = UIInspector.tintColor, alpha: CGFloat = 0.5) -> SCNNode? {
-		guard let geometry = geometry as? SCNPlane else { return nil }
-
-		let overlayGeometry = SCNBox(
-			width: geometry.width,
-			height: geometry.height,
-			length: 1,
-			chamferRadius: 0
-		)
-
-		let material = SCNMaterial()
-		material.diffuse.contents = color
-		material.transparency = alpha
-		material.transparencyMode = .dualLayer // better for overlapping transparent geometry
-		material.lightingModel = .constant
-		material.isDoubleSided = true
-		material.writesToDepthBuffer = false // important for transparency
-		material.readsFromDepthBuffer = false
-
-		overlayGeometry.materials = [material]
-
-		let overlayNode = SCNNode(geometry: overlayGeometry)
-		overlayNode.position = SCNVector3(0, 0, 0)
-		overlayNode.renderingOrder = 10 // ensure it's rendered after inner content
-
-		overlayNode.categoryBitMask = 2
-		addChildNode(overlayNode)
-		return overlayNode
-	}
 
 	func addBorderOverlay(color: UIColor = UIInspector.tintColor, thickness: CGFloat = 0.5, hidden: Bool) -> Set<SCNNode> {
 		guard let geometry = geometry as? SCNPlane else {
