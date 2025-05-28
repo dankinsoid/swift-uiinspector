@@ -37,7 +37,7 @@ extension UIInspector {
 		}
 
 		private func text(for value: Any?) -> String {
-			(value as? UIInspectorStringConvertible)?.inspectorDescription ?? "\(value ?? "nil")"
+			(value as? UIInspectorStringConvertible)?.inspectorDescription ?? value.map { String(reflecting: $0) } ?? ""
 		}
 	}
 }

@@ -79,7 +79,7 @@ struct ContentView: View {
 				.padding(.horizontal)
 				
 				Button("Inspect Grid") {
-					isInspectorPresented = true
+					UIInspectorController.present()
 				}
 				.padding()
 				.background(selectedColor)

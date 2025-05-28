@@ -97,9 +97,6 @@ extension UIButton: UIInspectorInfoConvertable {
 				UIInspector.Cell("Font", titleLabel?.font ?? UIFont.systemFont(ofSize: 17)),
 				UIInspector.Cell("Content Horizontal", contentHorizontalAlignment),
 				UIInspector.Cell("Content Vertical", contentVerticalAlignment),
-				UIInspector.Cell("Is Enabled", isEnabled),
-				UIInspector.Cell("Is Selected", isSelected),
-				UIInspector.Cell("Is Highlighted", isHighlighted),
 			]),
 		]
 	}
@@ -323,7 +320,8 @@ public extension UIControl {
 					UIInspector.Cell("Is Enabled", isEnabled),
 					UIInspector.Cell("Is Selected", isSelected),
 					UIInspector.Cell("Is Highlighted", isHighlighted),
-					UIInspector.Cell("State", state.rawValue.hexString),
+					UIInspector.Cell("Is Focused", isFocused),
+					UIInspector.Cell("State", state),
 				]
 			)
 		]

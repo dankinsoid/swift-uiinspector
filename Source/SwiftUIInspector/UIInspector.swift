@@ -49,10 +49,11 @@ public final class UIInspector: UIView {
 
 	/// The tint color for inspector UI elements and highlights.
 	/// Defaults to a pink/magenta color that adapts to dark/light mode.
-	public static var tintColor = UIColor(
-		dark: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
-		light: UIColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1.0)
-	)
+	public static var tintColor = UIColor.systemBlue
+//	(
+//		dark: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
+//		light: UIColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1.0)
+//	)
 
 	/// The foreground color for text and icons in the inspector.
 	/// Defaults to white in dark mode and black in light mode.
