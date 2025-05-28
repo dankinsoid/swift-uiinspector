@@ -562,7 +562,8 @@ private extension UIInspector {
 	private func didTap(on source: UIView, rect: UIView?, underlying: [(UIView, UIView)] = []) {
 		guard let controller else { return }
 		feedback.selectionChanged()
-		let dict = Dictionary(underlying.map { ($0.1, $0.0) }, uniquingKeysWith: { _, n in n })
+		var dict = Dictionary(underlying.map { ($0.1, $0.0) }, uniquingKeysWith: { _, n in n })
+		dict[source] = rect
 		let hostingController = DeinitHostingController(
 			rootView: Info(
 				view: source,
