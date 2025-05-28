@@ -94,6 +94,7 @@ public final class UIInspector: UIView {
 	var inspectTargetRect: CGRect?
 	private var rects: [UIView: UIView] = [:]
 	private var hiddenRects: Set<UIView> = []
+	private var selectedRect: Set<UIView> = []
 
 	private let gridContainer = UIView()
 	private let gridWidth: CGFloat = 2.0 / UIScreen.main.scale
@@ -331,6 +332,7 @@ private extension UIInspector {
 
 		rects.removeAll()
 		hiddenRects.removeAll()
+		unselect()
 
 		container.subviews.forEach { $0.removeFromSuperview() }
 		let viewForSnapshot = targetView
@@ -539,21 +541,45 @@ private extension UIInspector {
 
 	@objc private func handleTap(_ gesture: JustTapGesture) {
 		guard let rect = gesture.view, let source = rects[rect] else { return }
+		let deeps = Dictionary(
+			container
+				.subviews
+				.enumerated()
+				.map { ($0.element, $0.offset) }
+		) { _, n in n }
 		if gesture.state == .ended {
-			didTap(on: source, rect: rect)
+			didTap(
+				on: source,
+				rect: rect,
+				underlying: rects.filter {
+					$0.key !== rect && $0.key.bounds.contains(gesture.location(in: $0.key))
+				}
+				.sorted { deeps[$0.key, default: 0] > deeps[$1.key, default: 0] }
+			)
 		}
 	}
 
-	private func didTap(on source: UIView, rect: UIView?) {
+	private func didTap(on source: UIView, rect: UIView?, underlying: [(UIView, UIView)] = []) {
 		guard let controller else { return }
 		feedback.selectionChanged()
+		let dict = Dictionary(underlying.map { ($0.1, $0.0) }, uniquingKeysWith: { _, n in n })
 		let hostingController = DeinitHostingController(
-			rootView: Info(view: source, custom: customInfoView)
+			rootView: Info(
+				view: source,
+				underlying: underlying.map(\.1),
+				custom: customInfoView
+			) { [weak self] in
+				if let rect = dict[$0] {
+					self?.select(rect: rect)
+				} else {
+					self?.unselect()
+				}
+			}
 		)
 		hostingController.onDeinit = { [weak self] in
 			self?.inspector3D.clearSelection()
 			if let rect {
-				self?.unselect(rect: rect)
+				self?.unselect()
 			}
 		}
 		if #available(iOS 15.0, *) {
@@ -567,10 +593,21 @@ private extension UIInspector {
 		}
 	}
 
-	private func unselect(rect: UIView) {
-		UIView.animate(withDuration: 0.1) {
-			rect.backgroundColor = .clear
+	private func select(rect: UIView) {
+		unselect()
+		selectedRect.insert(rect)
+		UIView.animate(withDuration: 0.1) { [self] in
+			rect.backgroundColor = tintColor.withAlphaComponent(0.5)
 		}
+	}
+
+	private func unselect() {
+		UIView.animate(withDuration: 0.1) { [selectedRect] in
+			selectedRect.forEach { rect in
+				rect.backgroundColor = .clear
+			}
+		}
+		selectedRect = []
 	}
 }
 

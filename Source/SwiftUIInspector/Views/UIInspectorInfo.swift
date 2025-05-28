@@ -5,35 +5,89 @@ extension UIInspector {
 	struct Info: View {
 
 		let view: UIView
+		let underlying: [UIView]
 		let custom: (UIView) -> AnyView
+		let onSelect: (UIView) -> Void
+		@State private var selected: ObjectIdentifier
+	
+		init(view: UIView, underlying: [UIView], custom: @escaping (UIView) -> AnyView, onSelect: @escaping (UIView) -> Void) {
+			self.view = view
+			self.underlying = underlying
+			self.custom = custom
+			self.onSelect = onSelect
+			_selected = State(initialValue: view.objectID)
+		}
+	
+		var selectedView: UIView {
+			([view] + underlying).first(where: { $0.objectID == selected }) ?? view
+		}
+		
+		var info: [UIInspector.Section] {
+			(selectedView as? UIInspectorInfoConvertable)?.inspectorInfo ?? selectedView.defaultInspectorInfo
+		}
 
 		var body: some View {
-			let info = (view as? UIInspectorInfoConvertable)?.inspectorInfo ?? view.defaultInspectorInfo
+			let info = info
 			NavigationView {
-				List {
-					ForEach(Array(info.enumerated()), id: \.offset) { _, section in
-						SwiftUI.Section {
-							ForEach(Array(section.cells.enumerated()), id: \.offset) { _, cell in
-								HStack(alignment: .firstTextBaseline, spacing: 4) {
-									Text(cell.title)
-										.lineLimit(1)
-									Text(text(for: cell.value))
-										.lineLimit(3)
-										.multilineTextAlignment(.trailing)
-										.selectableText()
-										.frame(maxWidth: .infinity, alignment: .trailing)
-										.opacity(0.5)
+				VStack(spacing: 0) {
+					if !underlying.isEmpty {
+						ScrollView(.horizontal, showsIndicators: false) {
+							HStack(spacing: 0) {
+								ForEach([view] + underlying, id: \.objectID) { view in
+									Button {
+										selected = view.objectID
+										onSelect(view)
+									} label: {
+										title(for: view)
+											.foregroundColor(view.objectID == selected ? .accentColor : .secondary)
+											.padding(4)
+											.frame(maxHeight: .infinity)
+											.contentShape(.rect)
+									}
+									if view !== underlying.last {
+										Text("❯")
+											.foregroundColor(.secondary)
+									}
 								}
 							}
-						} header: {
-							Text(section.title)
+							.frame(height: 40)
+							.font(.subheadline)
+							.padding(.vertical, 4)
+							.padding(.horizontal, 16)
 						}
 					}
-					custom(view)
+					List {
+						ForEach(Array(info.enumerated()), id: \.offset) { _, section in
+							SwiftUI.Section {
+								ForEach(Array(section.cells.enumerated()), id: \.offset) { _, cell in
+									HStack(alignment: .firstTextBaseline, spacing: 4) {
+										Text(cell.title)
+											.lineLimit(1)
+										Text(text(for: cell.value))
+											.lineLimit(3)
+											.multilineTextAlignment(.trailing)
+											.selectableText()
+											.frame(maxWidth: .infinity, alignment: .trailing)
+											.opacity(0.5)
+									}
+								}
+							} header: {
+								Text(section.title)
+							}
+						}
+						custom(view)
+					}
 				}
 				.navigationBarTitle("")
 				.navigationBarHidden(true)
 			}
+		}
+		
+		@ViewBuilder
+		func title(for view: UIView) -> some View {
+			Text(String(describing: type(of: view)))
+				.truncationMode(.middle)
+				.frame(maxWidth: 200)
 		}
 
 		private func text(for value: Any?) -> String {

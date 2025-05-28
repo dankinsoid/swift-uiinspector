@@ -59,6 +59,10 @@ extension CGRect {
 }
 
 extension UIView {
+	
+	var objectID: ObjectIdentifier {
+		ObjectIdentifier(self)
+	}
 
 	var allSubviews: [UIView] {
 		subviews + subviews.flatMap(\.allSubviews)
