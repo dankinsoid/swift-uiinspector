@@ -10,12 +10,11 @@ final class UIInspector3D: UIView {
 	private let sceneView = SCNView()
 	private let scene = SCNScene()
 	private(set) var viewNodes: [SCNViewRect] = []
-	private var highlightNodes: Set<SCNNode> = []
+	private(set) var viewNodesBySource: [UIView: SCNViewRect] = [:]
 	private var borderOverlayNodes: Set<SCNNode> = []
 	var notifyViewSelected: (any UIInspectorItem, [any UIInspectorItem]) -> Void = { _, _ in }
 
 	// Animation properties
-	private var isAnimating = false
 	private let initialCameraDistance: Float = 1500
 	private let revealCameraDistance: Float = 2000
 	private var lastPinchLocation: CGPoint?
@@ -62,12 +61,9 @@ final class UIInspector3D: UIView {
 		for node in borderOverlayNodes {
 			node.geometry?.firstMaterial?.diffuse.contents = tintColor
 		}
-		for node in highlightNodes {
-			node.geometry?.firstMaterial?.emission.contents = tintColor
-		}
 	}
 
-	func update(animate: Bool = false, whenReady: (() -> Void)? = nil) {
+	func update(animate: Bool, whenReady: (() -> Void)?) {
 		guard let targetView, window != nil, bounds.width > 0, bounds.height > 0 else {
 			return
 		}
@@ -81,7 +77,7 @@ final class UIInspector3D: UIView {
 		}
 		hideMeasurementPlane()
 		viewNodes.removeAll()
-		highlightNodes.removeAll()
+		viewNodesBySource.removeAll()
 		borderOverlayNodes.removeAll()
 
 		// Configure camera for perfect sizing FIRST
@@ -96,6 +92,7 @@ final class UIInspector3D: UIView {
 				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
 				scene.rootNode.addChildNode(node)
 				viewNodes.append(node)
+				viewNodesBySource[view] = node
 				if view === targetView {
 					targetNode = node
 				}
@@ -366,17 +363,13 @@ final class UIInspector3D: UIView {
 		_ animation: () -> Void,
 		completion: (() -> Void)? = nil
 	) {
-		isAnimating = true
-
 		SCNTransaction.begin()
 		SCNTransaction.animationDuration = duration
 		SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: curve)
 
 		animation()
 
-		SCNTransaction.completionBlock = { [weak self] in
-			guard let self else { return }
-			self.isAnimating = false
+		SCNTransaction.completionBlock = {
 			completion?()
 		}
 		SCNTransaction.commit()

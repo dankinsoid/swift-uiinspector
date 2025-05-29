@@ -8,19 +8,20 @@ final class SCNViewRect: SCNNode, Identifiable, UIInspectorItem {
 	}
 
 	var overlayNode: SCNNode?
-	var tintColor: UIColor
 	let source: UIView
 	let bounds: CGRect
 	var size: CGSize {
 		bounds.size
 	}
 	var globalRect: CGRect
+	var isHighlighted = false
+	var highlightColor: UIColor = UIInspector.tintColor.withAlphaComponent(UIInspector.highlightAlpha)
 
 	init(_ view: UIView, tintColor: UIColor, geometry: SCNPlane) {
 		self.source = view
 		self.globalRect = view.convert(view.bounds, to: view.window)
 		self.bounds = view.bounds
-		self.tintColor = tintColor
+		self.highlightColor = tintColor.withAlphaComponent(UIInspector.highlightAlpha)
 		super.init()
 		self.geometry = geometry
 	}
@@ -51,13 +52,11 @@ final class SCNViewRect: SCNNode, Identifiable, UIInspectorItem {
 	}
 
 	func highlight() {
-		guard overlayNode == nil else { return }
-		overlayNode = addRectOverlay(color: tintColor)
-	}
-
-	func highlight(with color: UIColor) {
-		unhighlight()
-		overlayNode = addRectOverlay(color: color, alpha: 1)
+		guard overlayNode == nil else {
+			overlayNode?.geometry?.firstMaterial?.diffuse.contents = highlightColor
+			return
+		}
+		overlayNode = addRectOverlay(color: highlightColor)
 	}
 
 	func unhighlight() {
@@ -68,7 +67,7 @@ final class SCNViewRect: SCNNode, Identifiable, UIInspectorItem {
 
 extension SCNNode {
 	
-	func addRectOverlay(color: UIColor, alpha: CGFloat = 0.5) -> SCNNode? {
+	func addRectOverlay(color: UIColor) -> SCNNode? {
 		guard let geometry = geometry as? SCNPlane else { return nil }
 		
 		let overlayGeometry = SCNBox(
@@ -79,7 +78,9 @@ extension SCNNode {
 		)
 		
 		let material = SCNMaterial()
-		material.diffuse.contents = color
+		var alpha: CGFloat = 1
+		color.getRed(nil, green: nil, blue: nil, alpha: &alpha)
+		material.diffuse.contents = color.withAlphaComponent(1)
 		material.transparency = alpha
 		
 		overlayGeometry.materials = [material]

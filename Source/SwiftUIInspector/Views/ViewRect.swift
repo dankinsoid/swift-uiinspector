@@ -3,15 +3,26 @@ import UIKit
 protocol UIInspectorItem: Hashable {
 
 	var source: UIView { get }
+	var isHighlighted: Bool { get }
+	var highlightColor: UIColor { get nonmutating set }
 	func highlight()
-	func highlight(with color: UIColor)
 	func unhighlight()
+}
+
+extension UIInspectorItem {
+
+	func highlight(with color: UIColor ) {
+		highlightColor = color
+		highlight()
+	}
 }
 
 final class UIViewInspectorItem: UIView, UIInspectorItem {
 	
 	let source: UIView
-	
+	var isHighlighted = false
+	var highlightColor: UIColor = UIInspector.tintColor.withAlphaComponent(UIInspector.highlightAlpha)
+
 	init(_ source: UIView, frame: CGRect = .zero) {
 		self.source = source
 		super.init(frame: frame)
@@ -22,16 +33,14 @@ final class UIViewInspectorItem: UIView, UIInspectorItem {
 	required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}
-	
-	func highlight(with color: UIColor) {
-		backgroundColor = color
-	}
 
 	func highlight() {
-		backgroundColor = tintColor.withAlphaComponent(0.5)
+		isHighlighted = true
+		backgroundColor = highlightColor
 	}
 
 	func unhighlight() {
+		isHighlighted = false
 		backgroundColor = .clear
 	}
 }

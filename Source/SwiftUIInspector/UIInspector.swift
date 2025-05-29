@@ -41,7 +41,10 @@ import SwiftUI
 ///     )
 /// }
 /// ```
-public final class UIInspector: UIView {
+open class UIInspector: UIView {
+	
+	/// The view that is currently being inspected.
+	open private(set) weak var targetView: UIView?
 
 	/// The background color for inspector UI elements.
 	/// Defaults to a dark/light mode adaptive color.
@@ -50,13 +53,12 @@ public final class UIInspector: UIView {
 	/// The tint color for inspector UI elements and highlights.
 	/// Defaults to a pink/magenta color that adapts to dark/light mode.
 	public static var tintColor = UIColor.systemBlue
+	
+	public static var highlightAlpha: CGFloat = 0.5
 
 	/// The foreground color for text and icons in the inspector.
 	/// Defaults to white in dark mode and black in light mode.
 	public static var foregroundColor = UIColor(dark: .white, light: .black)
-
-	/// Closure called when the close button is tapped.
-	var onClose: (() -> Void)?
 
 	/// Customizes the additional information view shown for inspected views.
 	///
@@ -66,17 +68,79 @@ public final class UIInspector: UIView {
 	public var customInfoView: (UIView) -> AnyView = { _ in AnyView(EmptyView()) }
 
 	/// Defines the animation duration for the inspector's update.
-	public var showUpdateAnimation = true
+	open var showUpdateAnimation = true
 
-	/// Whether to hide full-screen layers in the inspector.
-	public var hideFullScreenLayers = false {
+	/// Closure to configure the custom buttons in the inspector controls.
+	open var customButtons: (UIInspector) -> [UIInspectorButton] = { _ in [] }
+
+	/// Whether to enable magnification of the inspected view.
+	open var isMagnificationEnabled = false {
 		didSet {
-			_update(reset: false)
+			guard isMagnificationEnabled != oldValue else { return }
+			if isMagnificationEnabled {
+				enableMagnification()
+			} else {
+				disableMagnification()
+			}
+			reloadControls()
 		}
 	}
 
-	/// Closure to configure the custom buttons in the inspector controls.
-	public var customButtons: (UIInspector) -> [UIInspectorButton] = { _ in [] }
+	/// Whether to enable pipettee functionality for color picking.
+	open var isPipetteeEnabled = false {
+		didSet {
+			guard isPipetteeEnabled != oldValue else { return }
+			if isPipetteeEnabled {
+				isMeasurementEnabled = false
+			}
+			#if targetEnvironment(simulator)
+			scroll.isScrollEnabled = !isPipetteeEnabled
+			#endif
+			reloadControls()
+		}
+	}
+
+	/// Whether to enable measurement functionality in the inspector.
+	open var isMeasurementEnabled = true {
+		didSet {
+			guard isMeasurementEnabled != oldValue else { return }
+			if isMeasurementEnabled {
+				isPipetteeEnabled = false
+			}
+			#if targetEnvironment(simulator)
+			scroll.isScrollEnabled = !isMeasurementEnabled
+			#endif
+			reloadControls()
+		}
+	}
+
+	/// Whether to show the edges of the inspected view and subviews.
+	open var areEdgesVisible = true {
+		didSet {
+			edgesContainer.isHidden = !areEdgesVisible
+			inspector3D.showBorderOverlay = areEdgesVisible
+			if areEdgesVisible {
+				drawEdges()
+			}
+			reloadControls()
+		}
+	}
+
+	/// Whether to enable 3D view inspection.
+	open var show3DView = false {
+		didSet {
+			guard oldValue != show3DView else { return }
+			if show3DView {
+				showInspector3D()
+			} else {
+				hideInspector3D()
+			}
+			reloadControls()
+		}
+	}
+
+	/// Closure called when the close button is tapped.
+	var onClose: (() -> Void)?
 
 	private let background = UISceneBackground()
 	private let scroll = UIScrollView()
@@ -89,16 +153,16 @@ public final class UIInspector: UIView {
 	private let inspector3D = UIInspector3D()
 	private let animationView = UIView()
 	private var selectedRect: (any UIInspectorItem)?
+	private var highlightedViews: [UIView: UIColor] = [:]
 
-	public private(set) weak var targetView: UIView?
 	var inspectTargetRect: CGRect?
 	private var rects: [UIViewInspectorItem] = []
-	private var hiddenRects: Set<UIView> = []
+	private var rectsBySource: [UIView: UIViewInspectorItem] = [:]
 
-	private let gridContainer = UIView()
-	private let gridWidth: CGFloat = 2.0 / UIScreen.main.scale
-	private var highlightedGrid: Set<UIGrid> = []
-	private var gridViews: [UIGrid] = []
+	private let edgesContainer = UIView()
+	private let edgeWidth: CGFloat = 2.0 / UIScreen.main.scale
+	private var highlightedEdges: Set<UIEdgeLine> = []
+	private var edgeViews: [UIEdgeLine] = []
 
 	private weak var draggingView: UIView?
 	private var draggingControlOffset: CGPoint = .zero
@@ -111,83 +175,6 @@ public final class UIInspector: UIView {
 	private var isFirstAppear = true
 	private var controlsOffset: CGPoint = .zero
 
-	private var isMagnificationEnabled = false {
-		didSet {
-			guard isMagnificationEnabled != oldValue else { return }
-			if isMagnificationEnabled {
-				enableMagnification()
-			} else {
-				disableMagnification()
-			}
-			updateButtons()
-		}
-	}
-
-	private var isPipetteeEnabled = false {
-		didSet {
-			guard isPipetteeEnabled != oldValue else { return }
-			if isPipetteeEnabled {
-				isMeasurementEnabled = false
-			}
-			#if targetEnvironment(simulator)
-			scroll.isScrollEnabled = !isPipetteeEnabled
-			#endif
-			updateButtons()
-		}
-	}
-
-	private var isMeasurementEnabled = true {
-		didSet {
-			guard isMeasurementEnabled != oldValue else { return }
-			if isMeasurementEnabled {
-				isPipetteeEnabled = false
-			}
-			#if targetEnvironment(simulator)
-			scroll.isScrollEnabled = !isMeasurementEnabled
-			#endif
-			updateButtons()
-		}
-	}
-
-	private var showGrid = true {
-		didSet {
-			gridContainer.isHidden = !showGrid
-			inspector3D.showBorderOverlay = showGrid
-			if showGrid {
-				drawGrid()
-			}
-			updateButtons()
-		}
-	}
-
-	private var showLayers = false {
-		didSet {
-			guard oldValue != showLayers else { return }
-			if showLayers {
-				if let targetView {
-					if scroll.zoomScale > 1 {
-						UIView.animate(withDuration: 0.2) { [self] in
-							scroll.zoomScale = 1
-						} completion: { [self] _ in
-							inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
-								inspector3D.isHidden = false
-							}
-						}
-					} else {
-						inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
-							inspector3D.isHidden = false
-						}
-					}
-				}
-			} else {
-				inspector3D.animateFocus { [weak self] in
-					self?.inspector3D.isHidden = true
-				}
-			}
-			updateButtons()
-		}
-	}
-
 	/// Initializes a new inspector view.
 	///
 	/// The inspector starts with default settings and is ready to inspect views
@@ -198,7 +185,7 @@ public final class UIInspector: UIView {
 		tintColor = Self.tintColor
 		backgroundColor = .clear
 		background.tintColor = tintColor
-		selectionView.backgroundColor = tintColor.withAlphaComponent(0.5)
+		selectionView.backgroundColor = selectionColor
 		measurementLabel.textColor = tintColor
 
 		inspector3D.tintColor = tintColor
@@ -220,9 +207,9 @@ public final class UIInspector: UIView {
 		container.backgroundColor = .clear
 		scroll.addSubview(container)
 
-		gridContainer.isUserInteractionEnabled = false
-		gridContainer.backgroundColor = .clear
-		addSubview(gridContainer)
+		edgesContainer.isUserInteractionEnabled = false
+		edgesContainer.backgroundColor = .clear
+		addSubview(edgesContainer)
 		addSubview(inspector3D)
 		inspector3D.isHidden = true
 		inspector3D.notifyViewSelected = { [weak self] view, parents in
@@ -236,24 +223,24 @@ public final class UIInspector: UIView {
 	}
 
 	@available(*, unavailable)
-	required init?(coder: NSCoder) {
+	required public init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}
 
-	override public func didMoveToWindow() {
+	override open func didMoveToWindow() {
 		super.didMoveToWindow()
 		update()
-		updateButtons()
+		reloadControls()
 	}
 
-	override public func tintColorDidChange() {
+	override open func tintColorDidChange() {
 		super.tintColorDidChange()
-		for grid in gridViews {
+		for grid in edgeViews {
 			grid.backgroundColor = tintColor
 		}
 		inspector3D.tintColor = tintColor
-		updateButtons()
-		selectionView.backgroundColor = tintColor.withAlphaComponent(0.5)
+		reloadControls()
+		selectionView.backgroundColor = selectionColor
 		measurementLabel.textColor = tintColor
 		background.tintColor = tintColor
 	}
@@ -264,7 +251,7 @@ public final class UIInspector: UIView {
 	/// - Parameters:
 	///  - view: The view to inspect
 	///  - rect: An optional rectangle within the view to focus on.
-	public func inspect(view: UIView, at rect: CGRect? = nil) {
+	open func inspect(view: UIView, at rect: CGRect? = nil) {
 		targetView = view
 		inspectTargetRect = rect
 		update()
@@ -273,7 +260,7 @@ public final class UIInspector: UIView {
 	/// Updates the inspector view with the current state of the target view.
 	///
 	/// Call this method to refresh the inspector when the target view has changed.
-	public func update() {
+	open func update() {
 		guard let targetView, let window, targetView.window === window else { return }
 		if showUpdateAnimation {
 			animationView.frame = bounds
@@ -287,68 +274,79 @@ public final class UIInspector: UIView {
 		}
 	}
 
-	public func highlight(view: UIView, with color: UIColor? = nil) {
-		let color = color ?? tintColor.withAlphaComponent(0.5)
-		let rect = rects.first { $0.source === view }
-		let node = inspector3D.viewNodes.first { $0.source === view }
+	open func highlight(view: UIView, with color: UIColor? = nil) {
+		let color = color ?? tintColor.withAlphaComponent(UIInspector.highlightAlpha)
+		let rect = rectsBySource[view]
+		let node = inspector3D.viewNodesBySource[view]
+		highlightedViews[view] = color
 		rect?.highlight(with: color)
 		node?.highlight(with: color)
 	}
 
-	public func unhighlight(view: UIView? = nil) {
+	open func unhighlight(view: UIView? = nil) {
 		if let view {
-			let rect = rects.first { $0.source === view }
-			rect?.unhighlight()
+			highlightedViews[view] = nil
+			rectsBySource[view]?.unhighlight()
+			inspector3D.viewNodesBySource[view]?.unhighlight()
 		} else {
-			rects.forEach { $0.unhighlight() }
+			highlightedViews.keys.forEach {
+				rectsBySource[$0]?.unhighlight()
+				inspector3D.viewNodesBySource[$0]?.unhighlight()
+			}
+			highlightedViews.removeAll()
 		}
 	}
 
-	override public func layoutSubviews() {
+	override open func layoutSubviews() {
 		super.layoutSubviews()
 		background.frame = bounds
 		updateControlsLayout()
+	}
+
+	open func reloadControls() {
+		updateButtons()
 	}
 }
 
 extension UIInspector: UIScrollViewDelegate {
 
-	public func viewForZooming(in scrollView: UIScrollView) -> UIView? {
+	open func viewForZooming(in scrollView: UIScrollView) -> UIView? {
 		container
 	}
 
-	public func scrollViewDidZoom(_ scrollView: UIScrollView) {
-		if showGrid {
-			drawGrid()
+	open func scrollViewDidZoom(_ scrollView: UIScrollView) {
+		if areEdgesVisible {
+			drawEdges()
 		}
 	}
 
-	public func scrollViewDidScroll(_ scrollView: UIScrollView) {
-		if showGrid {
-			drawGrid()
+	open func scrollViewDidScroll(_ scrollView: UIScrollView) {
+		if areEdgesVisible {
+			drawEdges()
 		}
 	}
 }
 
 private extension UIInspector {
 
-	func _update(reset: Bool = false) {
+	func _update(reset: Bool) {
 		guard let targetView, window != nil else { return }
 		if reset {
 			feedback.selectionChanged()
 			scroll.zoomScale = 1
 			scroll.frame = bounds
 			container.frame = scroll.bounds
-			gridContainer.frame = bounds
+			edgesContainer.frame = bounds
 			inspector3D.frame = bounds
 		}
 		if !inspector3D.isHidden {
-			inspector3D.update(animate: reset)
+			inspector3D.update(animate: reset, whenReady: nil)
 		}
 
 		rects.removeAll()
-		hiddenRects.removeAll()
+		rectsBySource.removeAll()
 		container.subviews.forEach { $0.removeFromSuperview() }
+		highlightedViews.removeAll()
 		let viewForSnapshot = targetView
 		snapshot.image = viewForSnapshot.snapshotImage()
 		let frame = viewForSnapshot.convert(viewForSnapshot.bounds, to: container)
@@ -358,23 +356,21 @@ private extension UIInspector {
 		for (_, layer) in targetView.selfAndAllVisibleSubviewsLayers.enumerated() {
 			for subview in layer {
 				let frame = subview.convert(subview.bounds, to: container)
-				guard !hideFullScreenLayers || frame.size.less(than: container.frame.size),
-				      insideRect(subview),
-				      !subview.needIgnoreInInspector
-				else {
+				guard insideRect(subview), !subview.needIgnoreInInspector else {
 					continue
 				}
 				let view = UIViewInspectorItem(subview, frame: frame)
-				view.tintColor = tintColor
+				view.highlightColor = tintColor.withAlphaComponent(UIInspector.highlightAlpha)
 				let tapGesture = JustTapGesture(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
 				rects.append(view)
+				rectsBySource[subview] = view
 			}
 		}
-		updateGrid()
-		if showGrid {
-			drawGrid()
+		updateEdges()
+		if areEdgesVisible {
+			drawEdges()
 		}
 
 		if showUpdateAnimation, reset {
@@ -399,81 +395,107 @@ private extension UIInspector {
 
 private extension UIInspector {
 
-	func updateGrid() {
-		removeGrid()
+	func showInspector3D() {
+		guard let targetView else { return }
+		if scroll.zoomScale > 1 {
+			UIView.animate(withDuration: 0.2) { [self] in
+				scroll.zoomScale = 1
+			} completion: { [self] _ in
+				showInspector3D(targetView: targetView)
+			}
+		} else {
+			showInspector3D(targetView: targetView)
+		}
+	}
+
+	func showInspector3D(targetView: UIView) {
+		inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
+			for (view, color) in highlightedViews {
+				inspector3D.viewNodesBySource[view]?.highlight(with: color)
+			}
+			inspector3D.isHidden = false
+		}
+	}
+
+	func hideInspector3D() {
+		inspector3D.animateFocus { [weak self] in
+			self?.inspector3D.isHidden = true
+		}
+	}
+}
+
+private extension UIInspector {
+
+	func updateEdges() {
+		removeEdges()
 		let rects = [container] + rects
 		for rect in rects {
 			for x in [rect.frame.minX, rect.frame.maxX] {
-				let line = UIGrid()
-				line.grid = x
+				let line = UIEdgeLine()
+				line.location = x
 				line.axis = .horizontal
 				line.sourceRect = rect.frame
-				gridViews.append(line)
+				edgeViews.append(line)
 			}
 		}
 		for rect in rects {
 			for y in [rect.frame.minY, rect.frame.maxY] {
-				let line = UIGrid()
-				line.grid = y
+				let line = UIEdgeLine()
+				line.location = y
 				line.axis = .vertical
 				line.sourceRect = rect.frame
-				gridViews.append(line)
+				edgeViews.append(line)
 			}
 		}
 
-		for line in gridViews {
+		for line in edgeViews {
 			line.backgroundColor = tintColor
 			line.isUserInteractionEnabled = false
-			line.isHidden = !showGrid
-			gridContainer.addSubview(line)
+			line.isHidden = !areEdgesVisible
+			edgesContainer.addSubview(line)
 		}
 	}
 
-	func drawGrid() {
+	func drawEdges() {
 		let threshold: CGFloat = 5
-		let halfWidth = gridWidth / 2
-		for line in gridViews {
+		let halfWidth = edgeWidth / 2
+		for line in edgeViews {
 			switch line.axis {
 			case .horizontal:
 				let size = min(line.sourceRect.size.height, container.bounds.height)
 				line.frame = container.convert(
-					CGRect(x: line.grid, y: line.sourceRect.midY - size / 2, width: 0, height: size),
-					to: gridContainer
+					CGRect(x: line.location, y: line.sourceRect.midY - size / 2, width: 0, height: size),
+					to: edgesContainer
 				)
 				.insetBy(dx: -halfWidth, dy: -threshold)
 			case .vertical:
 				let size = min(line.sourceRect.size.width, container.bounds.width)
 				line.frame = container.convert(
-					CGRect(x: line.sourceRect.midX - size / 2, y: line.grid, width: size, height: 0),
-					to: gridContainer
+					CGRect(x: line.sourceRect.midX - size / 2, y: line.location, width: size, height: 0),
+					to: edgesContainer
 				)
 				.insetBy(dx: -threshold, dy: -halfWidth)
 			}
 		}
 	}
 
-	func removeGrid() {
-		gridViews.forEach { $0.removeFromSuperview() }
-		gridViews.removeAll()
+	func removeEdges() {
+		edgeViews.forEach { $0.removeFromSuperview() }
+		edgeViews.removeAll()
 	}
 
 	func round(point: CGPoint) -> CGPoint {
-		guard !showLayers, !isMagnificationEnabled else { return point }
+		guard !show3DView, !isMagnificationEnabled else { return point }
 		let point = convert(point, to: snapshot).roundedToScale
-		guard showGrid else { return snapshot.convert(point, to: self) }
-		let sortedX = gridViews
+		guard areEdgesVisible else { return snapshot.convert(point, to: self) }
+		let sortedX = edgeViews
 			.filter { isVisible($0) && $0.axis == .horizontal }
 			.map { $0.convert($0.bounds, to: snapshot).midX }
 			.sorted {
 				abs($0 - point.x) < abs($1 - point.x)
 			}
 		let closestX = sortedX.first ?? point.x
-//		sortedX
-//			.first {
-//				min(point.y - $0.frame.minY, $0.frame.maxY - point.y) > 0
-//			}?.frame.midX ?? sortedX.first?.frame.midX ?? point.x
-
-		let sortedY = gridViews
+		let sortedY = edgeViews
 			.filter { isVisible($0) && $0.axis == .vertical }
 			.map { $0.convert($0.bounds, to: snapshot).midY }
 			.sorted {
@@ -481,11 +503,6 @@ private extension UIInspector {
 			}
 
 		let closestY = sortedY.first ?? point.y
-//		sortedY
-//			.first {
-//				min(point.x - $0.frame.minX, $0.frame.maxX - point.x) > 0
-//			}?.frame.midY ?? sortedY.first?.frame.midY ?? point.y
-//
 		let threshold: CGFloat = 10 / scroll.zoomScale
 		let x = abs(closestX - point.x) < threshold ? closestX : point.x
 		let y = abs(closestY - point.y) < threshold ? closestY : point.y
@@ -503,48 +520,48 @@ private extension UIInspector {
 	}
 
 	func highlightGrid(points: [CGPoint]) {
-		guard showGrid else { return }
-		let currentHighlighted = highlightedGrid
-		highlightedGrid = []
+		guard areEdgesVisible else { return }
+		let currentHighlighted = highlightedEdges
+		highlightedEdges = []
 		let highlightedWidth = 2.0
 		if !points.isEmpty {
 			let points = points.map { convert($0, to: container) }
-			for grid in gridViews {
-				switch grid.axis {
+			for edgeView in edgeViews {
+				switch edgeView.axis {
 				case .horizontal:
-					if points.contains(where: { isSameGrid(grid.grid, $0.x) }) {
-						highlightedGrid.insert(grid)
-						updateWidth(grid: grid, width: highlightedWidth)
+					if points.contains(where: { isSameEdge(edgeView.location, $0.x) }) {
+						highlightedEdges.insert(edgeView)
+						updateWidth(edge: edgeView, width: highlightedWidth)
 					}
 				case .vertical:
-					if points.contains(where: { isSameGrid(grid.grid, $0.y) }) {
-						highlightedGrid.insert(grid)
-						updateWidth(grid: grid, width: highlightedWidth)
+					if points.contains(where: { isSameEdge(edgeView.location, $0.y) }) {
+						highlightedEdges.insert(edgeView)
+						updateWidth(edge: edgeView, width: highlightedWidth)
 					}
 				}
 			}
 		}
-		for grid in currentHighlighted.subtracting(highlightedGrid) {
-			updateWidth(grid: grid, width: gridWidth)
+		for edgeView in currentHighlighted.subtracting(highlightedEdges) {
+			updateWidth(edge: edgeView, width: edgeWidth)
 		}
 	}
 
-	func isSameGrid(_ value1: CGFloat, _ value2: CGFloat) -> Bool {
+	func isSameEdge(_ value1: CGFloat, _ value2: CGFloat) -> Bool {
 		abs(value1 - value2) < 1 / UIScreen.main.scale
 	}
 
-	func updateWidth(grid: UIGrid, width: CGFloat) {
-		switch grid.axis {
+	func updateWidth(edge: UIEdgeLine, width: CGFloat) {
+		switch edge.axis {
 		case .horizontal:
-			grid.frame = CGRect(
-				origin: CGPoint(x: grid.frame.midX, y: grid.frame.minY),
-				size: CGSize(width: 0, height: grid.frame.height)
+			edge.frame = CGRect(
+				origin: CGPoint(x: edge.frame.midX, y: edge.frame.minY),
+				size: CGSize(width: 0, height: edge.frame.height)
 			)
 			.insetBy(dx: -width / 2, dy: 0)
 		case .vertical:
-			grid.frame = CGRect(
-				origin: CGPoint(x: grid.frame.minX, y: grid.frame.midY),
-				size: CGSize(width: grid.frame.width, height: 0)
+			edge.frame = CGRect(
+				origin: CGPoint(x: edge.frame.minX, y: edge.frame.midY),
+				size: CGSize(width: edge.frame.width, height: 0)
 			)
 			.insetBy(dx: 0, dy: -width / 2)
 		}
@@ -625,7 +642,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 		if controls.bounds.contains(gestureRecognizer.location(in: controls)) {
 			return controls.draggableArea.bounds.contains(gestureRecognizer.location(in: controls.draggableArea))
 		}
-		guard !showLayers else {
+		guard !show3DView else {
 			// remove if measurement will be supported in 3D inspector
 			return isMagnificationEnabled || isPipetteeEnabled
 		}
@@ -634,6 +651,10 @@ extension UIInspector: UIGestureRecognizerDelegate {
 }
 
 private extension UIInspector {
+	
+	var selectionColor: UIColor {
+		tintColor.withAlphaComponent(0.5)
+	}
 
 	func addDragGesture() {
 		#if targetEnvironment(simulator)
@@ -653,7 +674,7 @@ private extension UIInspector {
 		if gesture.state == .began {
 			draggingView = controls.bounds.contains(gesture.location(in: controls)) ? controls : nil
 			draggingStart = location
-			if draggingView != nil || !(showLayers && !isMagnificationEnabled && isMeasurementEnabled) {
+			if draggingView != nil || !(show3DView && !isMagnificationEnabled && isMeasurementEnabled) {
 				feedback.selectionChanged()
 			}
 		}
@@ -677,12 +698,12 @@ private extension UIInspector {
 			return
 		}
 		if isMeasurementEnabled {
-			guard !showLayers else { return }
+			guard !show3DView else { return }
 			drawSelectionRectGesture(gesture, location: location)
 		} else if isPipetteeEnabled {
 			let pixel: CGPoint
 			let location = gesture.location(in: self)
-			if showLayers {
+			if show3DView {
 				guard let point = inspector3D.convert(gesture.location(in: inspector3D)) else {
 					removeColorPicker()
 					return
@@ -711,7 +732,7 @@ private extension UIInspector {
 		location: CGPoint
 	) {
 		if gesture.state == .began {
-			if !showLayers || isMagnificationEnabled {
+			if !show3DView || isMagnificationEnabled {
 				addSubview(selectionView)
 			}
 			if !isMagnificationEnabled {
@@ -722,7 +743,7 @@ private extension UIInspector {
 		}
 		let point0: CGPoint?
 		let point1: CGPoint?
-		if showLayers, !isMagnificationEnabled {
+		if show3DView, !isMagnificationEnabled {
 			point0 = inspector3D.convert(draggingStart).map { inspector3D.convert($0, to: self) }
 			point1 = inspector3D.convert(location).map { inspector3D.convert($0, to: self) }
 		} else {
@@ -750,7 +771,7 @@ private extension UIInspector {
 				)
 			)
 
-			if !showLayers || isMagnificationEnabled {
+			if !show3DView || isMagnificationEnabled {
 				selectionView.frame = rect
 			} else
 			if let p0 = inspector3D.convertFromTarget(startPoint),
@@ -817,9 +838,9 @@ private extension UIInspector {
 			UIInspectorButton(
 				selectedIcon: UIImage(systemName: "square.stack.3d.down.right.fill"),
 				unselectedIcon: UIImage(systemName: "square.stack.3d.down.right"),
-				isSelected: showLayers
+				isSelected: show3DView
 			) { [weak self] in
-				self?.showLayers.toggle()
+				self?.show3DView.toggle()
 			},
 		]
 #if targetEnvironment(simulator)
@@ -846,16 +867,16 @@ private extension UIInspector {
 				selectedIcon: UIImage(systemName: "ruler.fill"),
 				unselectedIcon: UIImage(systemName: "ruler"),
 				isSelected: isMeasurementEnabled,
-				isEnabled: !showLayers && !isMagnificationEnabled
+				isEnabled: !show3DView && !isMagnificationEnabled
 			) { [weak self] in
 				guard let self else { return }
 				isMeasurementEnabled.toggle()
 			},
 			UIInspectorButton(
 				icon: UIImage(systemName: "grid"),
-				isSelected: showGrid
+				isSelected: areEdgesVisible
 			) { [weak self] in
-				self?.showGrid.toggle()
+				self?.areEdgesVisible.toggle()
 			},
 			UIInspectorButton(
 				icon: UIImage(systemName: "arrow.clockwise")
@@ -896,7 +917,7 @@ private extension UIInspector {
 	}
 
 	func zoomToFitSelection() {
-		guard !showLayers else {
+		guard !show3DView else {
 			inspector3D.zoomToFit(rect: selectionView.convert(selectionView.bounds, to: inspector3D))
 			return
 		}
