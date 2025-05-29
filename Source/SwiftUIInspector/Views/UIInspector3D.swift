@@ -9,10 +9,10 @@ final class UIInspector3D: UIView {
 	private var inspectTargetRect: CGRect?
 	private let sceneView = SCNView()
 	private let scene = SCNScene()
-	private var viewNodes: [SCNViewRect] = []
+	private(set) var viewNodes: [SCNViewRect] = []
 	private var highlightNodes: Set<SCNNode> = []
 	private var borderOverlayNodes: Set<SCNNode> = []
-	var notifyViewSelected: (any ViewRect, [any ViewRect]) -> Void = { _, _ in }
+	var notifyViewSelected: (any UIInspectorItem, [any UIInspectorItem]) -> Void = { _, _ in }
 
 	// Animation properties
 	private var isAnimating = false
@@ -395,7 +395,7 @@ final class UIInspector3D: UIView {
 			return
 		}
 
-		let dict = viewNodes.reduce(into: [UIView: any ViewRect]()) { result, view in
+		let dict = viewNodes.reduce(into: [UIView: any UIInspectorItem]()) { result, view in
 			result[view.source] = view
 		}
 	

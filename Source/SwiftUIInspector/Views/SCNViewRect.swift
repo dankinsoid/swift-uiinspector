@@ -1,7 +1,7 @@
 import UIKit
 import SceneKit
 
-final class SCNViewRect: SCNNode, Identifiable, ViewRect {
+final class SCNViewRect: SCNNode, Identifiable, UIInspectorItem {
 
 	var id: ObjectIdentifier {
 		ObjectIdentifier(source)
@@ -53,6 +53,11 @@ final class SCNViewRect: SCNNode, Identifiable, ViewRect {
 	func highlight() {
 		guard overlayNode == nil else { return }
 		overlayNode = addRectOverlay(color: tintColor)
+	}
+
+	func highlight(with color: UIColor) {
+		unhighlight()
+		overlayNode = addRectOverlay(color: color, alpha: 1)
 	}
 
 	func unhighlight() {

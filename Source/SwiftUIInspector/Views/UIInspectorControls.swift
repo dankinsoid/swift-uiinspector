@@ -8,7 +8,7 @@ final class UIInspectorControls: UIView {
 	let draggableArea = UIView()
 	private let draggableImageView = UIImageView(image: UIImage(systemName: "circle.grid.3x3.fill"))
 
-	var buttons: [Button] = [] {
+	var buttons: [UIInspectorButton] = [] {
 		didSet {
 			updateButtons()
 		}
@@ -72,27 +72,6 @@ final class UIInspectorControls: UIView {
 		draggableImageView.frame = draggableArea.bounds.insetBy(dx: padding, dy: padding)
 	}
 
-	struct Button {
-
-		let selectedIcon: UIImage?
-		let unselectedIcon: UIImage?
-		let isSelected: Bool
-		let isEnabled: Bool
-		let action: () -> Void
-
-		init(selectedIcon: UIImage?, unselectedIcon: UIImage?, isSelected: Bool, isEnabled: Bool = true, action: @escaping () -> Void) {
-			self.selectedIcon = selectedIcon
-			self.unselectedIcon = unselectedIcon ?? selectedIcon
-			self.isSelected = isSelected
-			self.isEnabled = isEnabled
-			self.action = action
-		}
-
-		init(icon: UIImage?, isSelected: Bool = false, isEnabled: Bool = true, action: @escaping () -> Void) {
-			self.init(selectedIcon: icon, unselectedIcon: icon, isSelected: isSelected, isEnabled: isEnabled, action: action)
-		}
-	}
-
 	final class ButtonView: UIControl {
 
 		let imageView = UIImageView()
@@ -142,5 +121,26 @@ final class UIInspectorControls: UIView {
 	@available(*, unavailable)
 	required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
+	}
+}
+
+public struct UIInspectorButton {
+
+	public var selectedIcon: UIImage?
+	public var unselectedIcon: UIImage?
+	public var isSelected: Bool
+	public var isEnabled: Bool
+	public var action: () -> Void
+
+	public init(selectedIcon: UIImage?, unselectedIcon: UIImage?, isSelected: Bool, isEnabled: Bool = true, action: @escaping () -> Void) {
+		self.selectedIcon = selectedIcon
+		self.unselectedIcon = unselectedIcon ?? selectedIcon
+		self.isSelected = isSelected
+		self.isEnabled = isEnabled
+		self.action = action
+	}
+
+	public init(icon: UIImage?, isSelected: Bool = false, isEnabled: Bool = true, action: @escaping () -> Void) {
+		self.init(selectedIcon: icon, unselectedIcon: icon, isSelected: isSelected, isEnabled: isEnabled, action: action)
 	}
 }

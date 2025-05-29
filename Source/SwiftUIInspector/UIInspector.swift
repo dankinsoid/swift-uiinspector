@@ -50,10 +50,6 @@ public final class UIInspector: UIView {
 	/// The tint color for inspector UI elements and highlights.
 	/// Defaults to a pink/magenta color that adapts to dark/light mode.
 	public static var tintColor = UIColor.systemBlue
-//	(
-//		dark: UIColor(red: 1.0, green: 0.6, blue: 0.8, alpha: 1.0),
-//		light: UIColor(red: 0.9, green: 0.4, blue: 0.6, alpha: 1.0)
-//	)
 
 	/// The foreground color for text and icons in the inspector.
 	/// Defaults to white in dark mode and black in light mode.
@@ -79,6 +75,9 @@ public final class UIInspector: UIView {
 		}
 	}
 
+	/// Closure to configure the custom buttons in the inspector controls.
+	public var customButtons: (UIInspector) -> [UIInspectorButton] = { _ in [] }
+
 	private let background = UISceneBackground()
 	private let scroll = UIScrollView()
 	private let container = UIView()
@@ -89,11 +88,11 @@ public final class UIInspector: UIView {
 	private lazy var measurementLabel = UIMeasurementLabel()
 	private let inspector3D = UIInspector3D()
 	private let animationView = UIView()
-	private var selectedRect: (any ViewRect)?
+	private var selectedRect: (any UIInspectorItem)?
 
 	public private(set) weak var targetView: UIView?
 	var inspectTargetRect: CGRect?
-	private var rects: [UIViewRect] = []
+	private var rects: [UIViewInspectorItem] = []
 	private var hiddenRects: Set<UIView> = []
 
 	private let gridContainer = UIView()
@@ -288,6 +287,23 @@ public final class UIInspector: UIView {
 		}
 	}
 
+	public func highlight(view: UIView, with color: UIColor? = nil) {
+		let color = color ?? tintColor.withAlphaComponent(0.5)
+		let rect = rects.first { $0.source === view }
+		let node = inspector3D.viewNodes.first { $0.source === view }
+		rect?.highlight(with: color)
+		node?.highlight(with: color)
+	}
+
+	public func unhighlight(view: UIView? = nil) {
+		if let view {
+			let rect = rects.first { $0.source === view }
+			rect?.unhighlight()
+		} else {
+			rects.forEach { $0.unhighlight() }
+		}
+	}
+
 	override public func layoutSubviews() {
 		super.layoutSubviews()
 		background.frame = bounds
@@ -348,7 +364,7 @@ private extension UIInspector {
 				else {
 					continue
 				}
-				let view = UIViewRect(subview, frame: frame)
+				let view = UIViewInspectorItem(subview, frame: frame)
 				view.tintColor = tintColor
 				let tapGesture = JustTapGesture(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
@@ -538,11 +554,11 @@ private extension UIInspector {
 private extension UIInspector {
 
 	@objc private func handleTap(_ gesture: JustTapGesture) {
-		guard let rect = gesture.view as? UIViewRect else { return }
+		guard let rect = gesture.view as? UIViewInspectorItem else { return }
 		let deeps = Dictionary(
 			container
 				.subviews
-				.compactMap { $0 as? UIViewRect }
+				.compactMap { $0 as? UIViewInspectorItem }
 				.enumerated()
 				.map { ($0.element, $0.offset) }
 		) { _, n in n }
@@ -557,7 +573,7 @@ private extension UIInspector {
 		}
 	}
 
-	private func didTap(on rect: any ViewRect, underlying: [any ViewRect]) {
+	private func didTap(on rect: any UIInspectorItem, underlying: [any UIInspectorItem]) {
 		guard let controller else { return }
 		feedback.selectionChanged()
 		var dict = Dictionary(underlying.map { ($0.source, $0) }, uniquingKeysWith: { _, n in n })
@@ -797,8 +813,8 @@ private extension UIInspector {
 
 	func updateButtons() {
 		controls.tintColor = tintColor
-		var buttons: [UIInspectorControls.Button] = [
-			UIInspectorControls.Button(
+		var buttons: [UIInspectorButton] = [
+			UIInspectorButton(
 				selectedIcon: UIImage(systemName: "square.stack.3d.down.right.fill"),
 				unselectedIcon: UIImage(systemName: "square.stack.3d.down.right"),
 				isSelected: showLayers
@@ -806,18 +822,18 @@ private extension UIInspector {
 				self?.showLayers.toggle()
 			},
 		]
-		#if targetEnvironment(simulator)
+#if targetEnvironment(simulator)
 		buttons.append(
-			UIInspectorControls.Button(
+			UIInspectorButton(
 				icon: UIImage(systemName: "arrow.up.left.and.down.right.magnifyingglass"),
 				isSelected: isMagnificationEnabled
 			) { [weak self] in
 				self?.isMagnificationEnabled.toggle()
 			}
 		)
-		#endif
+#endif
 		buttons += [
-			UIInspectorControls.Button(
+			UIInspectorButton(
 				selectedIcon: UIImage(systemName: "eyedropper.full"),
 				unselectedIcon: UIImage(systemName: "eyedropper"),
 				isSelected: isPipetteeEnabled,
@@ -826,7 +842,7 @@ private extension UIInspector {
 				guard let self else { return }
 				isPipetteeEnabled.toggle()
 			},
-			UIInspectorControls.Button(
+			UIInspectorButton(
 				selectedIcon: UIImage(systemName: "ruler.fill"),
 				unselectedIcon: UIImage(systemName: "ruler"),
 				isSelected: isMeasurementEnabled,
@@ -835,13 +851,13 @@ private extension UIInspector {
 				guard let self else { return }
 				isMeasurementEnabled.toggle()
 			},
-			UIInspectorControls.Button(
+			UIInspectorButton(
 				icon: UIImage(systemName: "grid"),
 				isSelected: showGrid
 			) { [weak self] in
 				self?.showGrid.toggle()
 			},
-			UIInspectorControls.Button(
+			UIInspectorButton(
 				icon: UIImage(systemName: "arrow.clockwise")
 			) { [weak self] in
 				self?.update()
@@ -849,13 +865,14 @@ private extension UIInspector {
 		]
 		if let onClose {
 			buttons.append(
-				UIInspectorControls.Button(
+				UIInspectorButton(
 					icon: UIImage(systemName: "xmark.circle.fill")
 				) {
 					onClose()
 				}
 			)
 		}
+		buttons += customButtons(self)
 		controls.buttons = buttons
 	}
 }

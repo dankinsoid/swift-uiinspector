@@ -4,13 +4,13 @@ extension UIInspector {
 
 	struct Info: View {
 
-		let view: any ViewRect
-		let underlying: [any ViewRect]
+		let view: any UIInspectorItem
+		let underlying: [any UIInspectorItem]
 		let custom: (UIView) -> AnyView
-		let onSelect: (any ViewRect) -> Void
-		@State private var selected: any ViewRect
+		let onSelect: (any UIInspectorItem) -> Void
+		@State private var selected: any UIInspectorItem
 	
-		init(view: any ViewRect, underlying: [any ViewRect], custom: @escaping (UIView) -> AnyView, onSelect: @escaping (any ViewRect) -> Void) {
+		init(view: any UIInspectorItem, underlying: [any UIInspectorItem], custom: @escaping (UIView) -> AnyView, onSelect: @escaping (any UIInspectorItem) -> Void) {
 			self.view = view
 			self.underlying = underlying
 			self.custom = custom

@@ -1,13 +1,14 @@
 import UIKit
 
-protocol ViewRect: Hashable {
+protocol UIInspectorItem: Hashable {
 
 	var source: UIView { get }
 	func highlight()
+	func highlight(with color: UIColor)
 	func unhighlight()
 }
 
-final class UIViewRect: UIView, ViewRect {
+final class UIViewInspectorItem: UIView, UIInspectorItem {
 	
 	let source: UIView
 	
@@ -22,6 +23,10 @@ final class UIViewRect: UIView, ViewRect {
 		fatalError("init(coder:) has not been implemented")
 	}
 	
+	func highlight(with color: UIColor) {
+		backgroundColor = color
+	}
+
 	func highlight() {
 		backgroundColor = tintColor.withAlphaComponent(0.5)
 	}
