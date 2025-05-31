@@ -39,7 +39,7 @@ Or add it directly in Xcode using File > Add Packages...
 
 ## Example
 
-https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.mp4
+https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.MP4
 
 ## Usage
 
