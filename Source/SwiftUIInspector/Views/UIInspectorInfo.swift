@@ -4,15 +4,25 @@ extension UIInspector {
 
 	struct Info: View {
 
+		let underlyingType: UnderlyingType
 		let view: any UIInspectorItem
 		let underlying: [any UIInspectorItem]
 		let custom: (UIView) -> AnyView
 		let onSelect: (any UIInspectorItem) -> Void
 		@State private var selected: any UIInspectorItem
+		private let padding: CGFloat = 14
+		private let smallPadding: CGFloat = 8
 	
-		init(view: any UIInspectorItem, underlying: [any UIInspectorItem], custom: @escaping (UIView) -> AnyView, onSelect: @escaping (any UIInspectorItem) -> Void) {
+		init(
+			view: any UIInspectorItem,
+			underlying: [any UIInspectorItem],
+			underlyingType: UnderlyingType,
+			custom: @escaping (UIView) -> AnyView,
+			onSelect: @escaping (any UIInspectorItem) -> Void
+		) {
 			self.view = view
 			self.underlying = underlying
+			self.underlyingType = underlyingType
 			self.custom = custom
 			self.onSelect = onSelect
 			_selected = State(initialValue: view)
@@ -30,35 +40,15 @@ extension UIInspector {
 			let info = info
 			NavigationView {
 				VStack(spacing: 0) {
-					if !underlying.isEmpty {
-						ScrollView(.horizontal, showsIndicators: false) {
-							HStack(spacing: 0) {
-								ForEach([view] + underlying, id: \.source.objectID) { view in
-									Button {
-										selected.unhighlight()
-										selected = view
-										selected.highlight()
-										onSelect(view)
-									} label: {
-										title(for: view.source)
-											.foregroundColor(view.source === selected.source ? .accentColor : .secondary)
-											.padding(4)
-											.frame(maxHeight: .infinity)
-											.contentShape(.rect)
-									}
-									if view.source !== underlying.last?.source {
-										Text("❯")
-											.foregroundColor(.secondary)
-									}
-								}
-							}
-							.frame(height: 40)
-							.font(.subheadline)
-							.padding(.vertical, 4)
-							.padding(.horizontal, 16)
-						}
-					}
 					List {
+						if !underlying.isEmpty {
+							SwiftUI.Section {
+								hierarchy
+									.listRowInsets(EdgeInsets())
+							} header: {
+								Text(underlyingType.rawValue)
+							}
+						}
 						ForEach(Array(info.enumerated()), id: \.offset) { _, section in
 							SwiftUI.Section {
 								ForEach(Array(section.cells.enumerated()), id: \.offset) { _, cell in
@@ -72,12 +62,14 @@ extension UIInspector {
 											.frame(maxWidth: .infinity, alignment: .trailing)
 											.opacity(0.5)
 									}
+									.listRowInsets(EdgeInsets(top: 0, leading: padding, bottom: 0, trailing: padding))
 								}
 							} header: {
 								Text(section.title)
 							}
 						}
 						custom(view.source)
+							.listRowInsets(EdgeInsets(top: 0, leading: padding, bottom: 0, trailing: padding))
 					}
 				}
 				.navigationBarTitle("")
@@ -91,9 +83,51 @@ extension UIInspector {
 				.truncationMode(.middle)
 				.frame(maxWidth: 200)
 		}
+		
+		@ViewBuilder
+		var hierarchy: some View {
+			ScrollView(.horizontal, showsIndicators: false) {
+				HStack(spacing: 0) {
+					ForEach([view] + underlying, id: \.source.objectID) { view in
+						Button {
+							selected.unhighlight()
+							selected = view
+							selected.highlight()
+							onSelect(view)
+						} label: {
+							title(for: view.source)
+								.font(.subheadline)
+								.foregroundColor(view.source === selected.source ? .primary : .secondary)
+								.frame(maxHeight: .infinity)
+								.padding(.horizontal, padding)
+								.background(
+									Group {
+										if view.source === selected.source {
+											RoundedRectangle(cornerRadius: 8)
+												.fill(Color.primary.opacity(0.2))
+										}
+									}
+								)
+								.lineLimit(1)
+						}
+						if view.source !== underlying.last?.source {
+							Divider()
+								.foregroundColor(.secondary)
+								.padding(.vertical, smallPadding)
+						}
+					}
+				}
+			}
+		}
 
 		private func text(for value: Any?) -> String {
 			(value as? UIInspectorStringConvertible)?.inspectorDescription ?? value.map { String(reflecting: $0) } ?? ""
+		}
+		
+		enum UnderlyingType: String, CaseIterable {
+			
+			case hierarchy = "Hierarchy"
+			case atThisLocation = "All views at this location"
 		}
 	}
 }

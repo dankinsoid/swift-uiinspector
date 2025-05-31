@@ -213,7 +213,7 @@ open class UIInspector: UIView {
 		addSubview(inspector3D)
 		inspector3D.isHidden = true
 		inspector3D.notifyViewSelected = { [weak self] view, parents in
-			self?.didTap(on: view, underlying: parents)
+			self?.didTap(on: view, underlying: parents, underlyingType: .hierarchy)
 		}
 
 		animationView.backgroundColor = .white
@@ -585,12 +585,17 @@ private extension UIInspector {
 				underlying: rects.filter {
 					$0 !== rect && $0.bounds.contains(gesture.location(in: $0))
 				}
-				.sorted { deeps[$0, default: 0] > deeps[$1, default: 0] }
+				.sorted { deeps[$0, default: 0] > deeps[$1, default: 0] },
+				underlyingType: .atThisLocation
 			)
 		}
 	}
 
-	private func didTap(on rect: any UIInspectorItem, underlying: [any UIInspectorItem]) {
+	private func didTap(
+		on rect: any UIInspectorItem,
+		underlying: [any UIInspectorItem],
+		underlyingType: Info.UnderlyingType
+	) {
 		guard let controller else { return }
 		feedback.selectionChanged()
 		var dict = Dictionary(underlying.map { ($0.source, $0) }, uniquingKeysWith: { _, n in n })
@@ -599,6 +604,7 @@ private extension UIInspector {
 			rootView: Info(
 				view: rect,
 				underlying: underlying,
+				underlyingType: underlyingType,
 				custom: customInfoView
 			) { [weak self] in
 				self?.selectedRect = $0

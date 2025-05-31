@@ -31,7 +31,7 @@ Add the following to your `Package.swift` file:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/dankinsoid/swift-uiinspector.git", from: "1.1.0")
+    .package(url: "https://github.com/dankinsoid/swift-uiinspector.git", from: "1.2.1")
 ]
 ```
 
@@ -39,7 +39,7 @@ Or add it directly in Xcode using File > Add Packages...
 
 ## Example
 
-<img src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.gif" width="300">
+<video src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.MP4" width="300">
 
 ## Usage
 
