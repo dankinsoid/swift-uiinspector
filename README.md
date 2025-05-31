@@ -39,7 +39,9 @@ Or add it directly in Xcode using File > Add Packages...
 
 ## Example
 
-https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.MP4
+<video width="320" controls>
+  <source src="https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.MP4" type="video/mp4">
+</video>
 
 ## Usage
 
