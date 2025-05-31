@@ -39,7 +39,7 @@ Or add it directly in Xcode using File > Add Packages...
 
 ## Example
 
-<video src='https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.MP4' width=180>
+<video src='https://github.com/dankinsoid/Resources/raw/main/SwiftUIInspector/example.MP4' width=180></video>
 
 ## Usage
 
