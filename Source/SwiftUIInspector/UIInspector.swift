@@ -331,6 +331,7 @@ private extension UIInspector {
 
 	func _update(reset: Bool) {
 		guard let targetView, window != nil else { return }
+		var targetSnapshot: UIViewSnapshot?
 		if reset {
 			feedback.selectionChanged()
 			scroll.zoomScale = 1
@@ -338,9 +339,6 @@ private extension UIInspector {
 			container.frame = scroll.bounds
 			edgesContainer.frame = bounds
 			inspector3D.frame = bounds
-		}
-		if !inspector3D.isHidden {
-			inspector3D.update(animate: reset, whenReady: nil)
 		}
 
 		rects.removeAll()
@@ -353,25 +351,39 @@ private extension UIInspector {
 		snapshot.frame = frame
 		container.addSubview(snapshot)
 
-		for (_, layer) in targetView.selfAndAllVisibleSubviewsLayers.enumerated() {
-			for subview in layer {
-				let frame = subview.convert(subview.bounds, to: container)
-				guard insideRect(subview), !subview.needIgnoreInInspector else {
-					continue
-				}
-				let view = UIViewInspectorItem(subview, frame: frame)
+		let groupped = targetView.selfAndAllVisibleSubviewsLayers
+			.map {
+				$0.filter { insideRect($0) && !$0.needIgnoreInInspector }
+					.map { UIViewSnapshot($0) }
+			}
+			.filter {
+				!$0.isEmpty
+			}
+		for (_, layer) in groupped.enumerated() {
+			for snapshot in layer {
+				let frame = container.convert(snapshot.globalRect, from: container.window)
+				let view = UIViewInspectorItem(snapshot, frame: frame)
 				view.highlightColor = tintColor.withAlphaComponent(UIInspector.highlightAlpha)
 				let tapGesture = JustTapGesture(target: self, action: #selector(handleTap(_:)))
 				view.addGestureRecognizer(tapGesture)
 				container.addSubview(view)
 				rects.append(view)
-				rectsBySource[subview] = view
+				rectsBySource[snapshot.source] = view
+				if snapshot.source === targetView {
+					targetSnapshot = snapshot
+				}
 			}
 		}
 		updateEdges()
 		if areEdgesVisible {
 			drawEdges()
 		}
+
+		inspector3D.update(
+			targetView: targetSnapshot ?? UIViewSnapshot(targetView),
+			groupedViews: groupped,
+			in: inspectTargetRect
+		)
 
 		if showUpdateAnimation, reset {
 			DispatchQueue.main.async { [self] in
@@ -396,20 +408,19 @@ private extension UIInspector {
 private extension UIInspector {
 
 	func showInspector3D() {
-		guard let targetView else { return }
 		if scroll.zoomScale > 1 {
 			UIView.animate(withDuration: 0.2) { [self] in
 				scroll.zoomScale = 1
 			} completion: { [self] _ in
-				showInspector3D(targetView: targetView)
+				showInspector3DWithoutAnimation()
 			}
 		} else {
-			showInspector3D(targetView: targetView)
+			showInspector3DWithoutAnimation()
 		}
 	}
 
-	func showInspector3D(targetView: UIView) {
-		inspector3D.inspect(view: targetView, in: inspectTargetRect, animate: true) { [self] in
+	func showInspector3DWithoutAnimation() {
+		inspector3D.showAppearAnimation { [self] in
 			for (view, color) in highlightedViews {
 				inspector3D.viewNodesBySource[view]?.highlight(with: color)
 			}
@@ -598,8 +609,6 @@ private extension UIInspector {
 	) {
 		guard let controller else { return }
 		feedback.selectionChanged()
-		var dict = Dictionary(underlying.map { ($0.source, $0) }, uniquingKeysWith: { _, n in n })
-		dict[rect.source] = rect
 		let hostingController = DeinitHostingController(
 			rootView: Info(
 				view: rect,

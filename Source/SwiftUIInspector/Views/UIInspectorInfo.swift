@@ -28,12 +28,12 @@ extension UIInspector {
 			_selected = State(initialValue: view)
 		}
 	
-		var selectedView: UIView {
-			([view] + underlying).first(where: { $0.source === selected.source })?.source ?? view.source
+		var selectedView: UIViewSnapshot {
+			([view] + underlying).first(where: { $0.snapshot.id == selected.snapshot.id })?.snapshot ?? view.snapshot
 		}
 		
 		var info: [UIInspector.Section] {
-			(selectedView as? UIInspectorInfoConvertable)?.inspectorInfo ?? selectedView.defaultInspectorInfo
+			selectedView.info
 		}
 
 		var body: some View {
@@ -68,7 +68,7 @@ extension UIInspector {
 								Text(section.title)
 							}
 						}
-						custom(view.source)
+						custom(view.snapshot.source)
 							.listRowInsets(EdgeInsets(top: 0, leading: padding, bottom: 0, trailing: padding))
 					}
 				}
@@ -88,21 +88,21 @@ extension UIInspector {
 		var hierarchy: some View {
 			ScrollView(.horizontal, showsIndicators: false) {
 				HStack(spacing: 0) {
-					ForEach([view] + underlying, id: \.source.objectID) { view in
+					ForEach([view] + underlying, id: \.snapshot.id) { view in
 						Button {
 							selected.unhighlight()
 							selected = view
 							selected.highlight()
 							onSelect(view)
 						} label: {
-							title(for: view.source)
+							title(for: view.snapshot.source)
 								.font(.subheadline)
-								.foregroundColor(view.source === selected.source ? .primary : .secondary)
+								.foregroundColor(view.snapshot.id == selected.snapshot.id ? .primary : .secondary)
 								.frame(maxHeight: .infinity)
 								.padding(.horizontal, padding)
 								.background(
 									Group {
-										if view.source === selected.source {
+										if view.snapshot.id == selected.snapshot.id {
 											RoundedRectangle(cornerRadius: 8)
 												.fill(Color.primary.opacity(0.2))
 										}
@@ -110,7 +110,7 @@ extension UIInspector {
 								)
 								.lineLimit(1)
 						}
-						if view.source !== underlying.last?.source {
+						if view.snapshot.id != underlying.last?.snapshot.id {
 							Divider()
 								.foregroundColor(.secondary)
 								.padding(.vertical, smallPadding)

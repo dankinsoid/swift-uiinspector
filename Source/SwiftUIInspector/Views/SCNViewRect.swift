@@ -4,23 +4,16 @@ import SceneKit
 final class SCNViewRect: SCNNode, Identifiable, UIInspectorItem {
 
 	var id: ObjectIdentifier {
-		ObjectIdentifier(source)
+		snapshot.id
 	}
 
 	var overlayNode: SCNNode?
-	let source: UIView
-	let bounds: CGRect
-	var size: CGSize {
-		bounds.size
-	}
-	var globalRect: CGRect
+	let snapshot: UIViewSnapshot
 	var isHighlighted = false
 	var highlightColor: UIColor = UIInspector.tintColor.withAlphaComponent(UIInspector.highlightAlpha)
 
-	init(_ view: UIView, tintColor: UIColor, geometry: SCNPlane) {
-		self.source = view
-		self.globalRect = view.convert(view.bounds, to: view.window)
-		self.bounds = view.bounds
+	init(_ snapshot: UIViewSnapshot, tintColor: UIColor, geometry: SCNPlane) {
+		self.snapshot = snapshot
 		self.highlightColor = tintColor.withAlphaComponent(UIInspector.highlightAlpha)
 		super.init()
 		self.geometry = geometry
@@ -28,27 +21,6 @@ final class SCNViewRect: SCNNode, Identifiable, UIInspectorItem {
 	
 	required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
-	}
-	
-	func convert(_ point: CGPoint, to view: SCNViewRect) -> CGPoint {
-		CGPoint(
-			x: point.x + globalRect.origin.x - view.globalRect.origin.x,
-			y: point.y + globalRect.origin.y - view.globalRect.origin.y
-		)
-	}
-
-	func convert(_ rect: CGRect, to view: SCNViewRect) -> CGRect {
-		let minXminY = convert(rect.origin, to: view)
-		let maxXmaxY = convert(
-			CGPoint(x: rect.maxX, y: rect.maxY),
-			to: view
-		)
-		return CGRect(
-			x: minXminY.x,
-			y: minXminY.y,
-			width: abs(maxXmaxY.x - minXminY.x),
-			height: abs(maxXmaxY.y - minXminY.y)
-		)
 	}
 
 	func highlight() {

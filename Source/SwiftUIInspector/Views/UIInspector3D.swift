@@ -4,7 +4,6 @@ import SwiftUI
 
 final class UIInspector3D: UIView {
 
-	private(set) weak var targetView: UIView?
 	private(set) var targetNode: SCNViewRect?
 	private var inspectTargetRect: CGRect?
 	private let sceneView = SCNView()
@@ -43,12 +42,6 @@ final class UIInspector3D: UIView {
 		fatalError("init(coder:) has not been implemented")
 	}
 
-	func inspect(view: UIView, in rect: CGRect?, animate: Bool = false, whenReady: (() -> Void)? = nil) {
-		targetView = view
-		inspectTargetRect = rect
-		update(animate: animate, whenReady: whenReady)
-	}
-
 	override func layoutSubviews() {
 		super.layoutSubviews()
 		background.frame = bounds
@@ -63,11 +56,23 @@ final class UIInspector3D: UIView {
 		}
 	}
 
-	func update(animate: Bool, whenReady: (() -> Void)?) {
-		guard let targetView, window != nil, bounds.width > 0, bounds.height > 0 else {
+	func showAppearAnimation(whenReady: (() -> Void)?) {
+		configureCameraForTargetView()
+		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
+			whenReady?()
+			animateAppear()
+		}
+	}
+
+	func update(
+		targetView: UIViewSnapshot,
+		groupedViews: [[UIViewSnapshot]],
+		in rect: CGRect?
+	) {
+		inspectTargetRect = rect
+		guard window != nil, bounds.width > 0, bounds.height > 0 else {
 			return
 		}
-		let groupedViews = targetView.selfAndAllVisibleSubviewsLayers
 
 		// Clear existing nodes (but keep camera and lights)
 		for childNode in scene.rootNode.childNodes {
@@ -80,42 +85,29 @@ final class UIInspector3D: UIView {
 		viewNodesBySource.removeAll()
 		borderOverlayNodes.removeAll()
 
-		// Configure camera for perfect sizing FIRST
-		if animate {
-			configureCameraForTargetView()
-		}
-
 		// Process each depth level
 		var i = 0
 		for views in groupedViews {
-			for (j, view) in views.filter({ insideRect($0) && !$0.needIgnoreInInspector }).enumerated() {
+			for (j, view) in views.enumerated() {
 				let node = createNodeForView(view, depth: Double(i) + Double(j) * 0.5)
 				scene.rootNode.addChildNode(node)
 				viewNodes.append(node)
-				viewNodesBySource[view] = node
-				if view === targetView {
+				viewNodesBySource[view.source] = node
+				if view.source === targetView.source {
 					targetNode = node
 				}
 			}
 			i += views.count
-		}
-
-		// Force scene view to update
-		DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
-			whenReady?()
-			if animate {
-				animateAppear()
-			}
 		}
 	}
 
 	func animateFocus(completion: (() -> Void)? = nil) {
 		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
 		      let camera = cameraNode.camera,
-		      let targetView else { return }
+		      let targetNode else { return }
 		// Compute new target values
-		let scaleForWidth = targetView.bounds.width / 2
-		let scaleForHeight = targetView.bounds.height / 2
+		let scaleForWidth = targetNode.snapshot.bounds.width / 2
+		let scaleForHeight = targetNode.snapshot.bounds.height / 2
 		let orthographicScale = max(scaleForWidth, scaleForHeight)
 		let targetPosition = SCNVector3(0, 0, initialCameraDistance)
 		let targetRotation = SCNVector3(0, 0, 0)
@@ -206,13 +198,13 @@ final class UIInspector3D: UIView {
 	}
 
 	private func configureCameraForTargetView(from function: String = #function) {
-		guard let targetView else { return }
+		guard let targetNode else { return }
 		guard let cameraNode = scene.rootNode.childNodes.first(where: { $0.camera != nil }),
 		      let camera = cameraNode.camera else { return }
 
 		// Calculate the orthographic scale to match the target view size
 		// The orthographic scale represents half the height of the view volume
-		let targetViewSize = targetView.bounds.size
+		let targetViewSize = targetNode.snapshot.bounds.size
 
 		// Calculate scale based on the larger dimension to ensure everything fits
 		let scaleForWidth = targetViewSize.width / 2
@@ -294,15 +286,14 @@ final class UIInspector3D: UIView {
 		return SCNVector3(sum.x / count, sum.y / count, sum.z / count)
 	}
 
-	private func createNodeForView(_ view: UIView, depth: Double) -> SCNViewRect {
+	private func createNodeForView(_ view: UIViewSnapshot, depth: Double) -> SCNViewRect {
 		// Create geometry
 		let width = max(view.bounds.width, 1) // Ensure minimum size
 		let height = max(view.bounds.height, 1)
 		let geometry = SCNPlane(width: width, height: height)
 
 		// Apply snapshot as texture
-		let snapshot = view.snapshotImageWithoutSubviews()
-		geometry.firstMaterial?.diffuse.contents = snapshot
+		geometry.firstMaterial?.diffuse.contents = view.snapshot
 		geometry.firstMaterial?.diffuse.magnificationFilter = .nearest
 		geometry.firstMaterial?.diffuse.minificationFilter = .nearest
 		geometry.firstMaterial?.diffuse.wrapS = .clamp
@@ -320,10 +311,10 @@ final class UIInspector3D: UIView {
 		}
 
 		// Convert view position to targetView coordinate system
-		let viewFrameInTarget = view.superview?.convert(view.frame, to: targetNode.source) ?? view.convert(view.bounds, to: targetNode.source)
+		let viewFrameInTarget = view.convert(view.bounds, to: targetNode.snapshot)
 
 		// Calculate position relative to targetView center
-		let targetCenter = CGPoint(x: targetNode.bounds.midX, y: targetNode.bounds.midY)
+		let targetCenter = CGPoint(x: targetNode.snapshot.bounds.midX, y: targetNode.snapshot.bounds.midY)
 		let viewCenter = CGPoint(x: viewFrameInTarget.midX, y: viewFrameInTarget.midY)
 
 		// Center around origin (0,0,0)
@@ -389,13 +380,13 @@ final class UIInspector3D: UIView {
 		}
 
 		let dict = viewNodes.reduce(into: [UIView: any UIInspectorItem]()) { result, view in
-			result[view.source] = view
+			result[view.snapshot.source] = view
 		}
 	
 		// Find corresponding UIView
 		notifyViewSelected(
 			node,
-			node.source.ancestors.dropFirst().compactMap { dict[$0] }
+			node.snapshot.ancestors.compactMap { dict[$0] }
 		)
 	}
 
@@ -447,14 +438,6 @@ final class UIInspector3D: UIView {
 			z: 0
 		)
 		gesture.setTranslation(.zero, in: sceneView)
-	}
-}
-
-extension UIInspector3D {
-
-	func insideRect(_ view: UIView) -> Bool {
-		guard let inspectTargetRect, let targetNode, targetNode.source !== view else { return true }
-		return inspectTargetRect.contains(view.convert(view.bounds, to: targetNode.source))
 	}
 }
 
@@ -555,16 +538,16 @@ extension UIInspector3D {
 
 		if let hitResult = hitResults.first(
 			where: {
-				($0.node as? SCNViewRect)?.bounds.size.isVisible == true && $0.node.geometry is SCNPlane
+				($0.node as? SCNViewRect)?.snapshot.bounds.size.isVisible == true && $0.node.geometry is SCNPlane
 			}
 		),
 		   let view = hitResult.node as? SCNViewRect
 		{
 			let localHit = CGPoint(
-				x: CGFloat(hitResult.localCoordinates.x) + view.bounds.midX,
-				y: view.bounds.midY - CGFloat(hitResult.localCoordinates.y)
+				x: CGFloat(hitResult.localCoordinates.x) + view.snapshot.bounds.midX,
+				y: view.snapshot.bounds.midY - CGFloat(hitResult.localCoordinates.y)
 			)
-			return (view.convert(localHit, to: targetNode), hitResult)
+			return (view.snapshot.convert(localHit, to: targetNode.snapshot), hitResult)
 		}
 		return nil
 	}
@@ -573,8 +556,8 @@ extension UIInspector3D {
 		guard let targetNode else { return nil }
 		let position = targetNode.convertPosition(
 			SCNVector3(
-				location.x - targetNode.size.width / 2,
-				targetNode.size.height / 2 - location.y,
+				location.x - targetNode.snapshot.size.width / 2,
+				targetNode.snapshot.size.height / 2 - location.y,
 				0
 			),
 			to: nil

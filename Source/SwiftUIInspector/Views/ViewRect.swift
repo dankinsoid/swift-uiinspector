@@ -2,7 +2,7 @@ import UIKit
 
 protocol UIInspectorItem: Hashable {
 
-	var source: UIView { get }
+	var snapshot: UIViewSnapshot { get }
 	var isHighlighted: Bool { get }
 	var highlightColor: UIColor { get nonmutating set }
 	func highlight()
@@ -19,12 +19,12 @@ extension UIInspectorItem {
 
 final class UIViewInspectorItem: UIView, UIInspectorItem {
 	
-	let source: UIView
+	let snapshot: UIViewSnapshot
 	var isHighlighted = false
 	var highlightColor: UIColor = UIInspector.tintColor.withAlphaComponent(UIInspector.highlightAlpha)
 
-	init(_ source: UIView, frame: CGRect = .zero) {
-		self.source = source
+	init(_ snapshot: UIViewSnapshot, frame: CGRect = .zero) {
+		self.snapshot = snapshot
 		super.init(frame: frame)
 		backgroundColor = .clear
 	}
