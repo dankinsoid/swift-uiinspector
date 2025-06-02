@@ -42,7 +42,7 @@ import SwiftUI
 /// }
 /// ```
 open class UIInspector: UIView {
-	
+
 	/// The view that is currently being inspected.
 	open private(set) weak var targetView: UIView?
 
@@ -53,7 +53,7 @@ open class UIInspector: UIView {
 	/// The tint color for inspector UI elements and highlights.
 	/// Defaults to a pink/magenta color that adapts to dark/light mode.
 	public static var tintColor = UIColor.systemBlue
-	
+
 	public static var highlightAlpha: CGFloat = 0.5
 
 	/// The foreground color for text and icons in the inspector.
@@ -131,7 +131,7 @@ open class UIInspector: UIView {
 		didSet {
 			guard oldValue != show3DView else { return }
 			if show3DView {
-				showInspector3D()
+				zoomAndShowInspector3D()
 			} else {
 				hideInspector3D()
 			}
@@ -142,6 +142,8 @@ open class UIInspector: UIView {
 	/// Closure called when the close button is tapped.
 	var onClose: (() -> Void)?
 
+	private var targetSnapshot: UIViewSnapshot?
+	private var groupedViews: [[UIViewSnapshot]] = []
 	private let background = UISceneBackground()
 	private let scroll = UIScrollView()
 	private let container = UIView()
@@ -223,7 +225,7 @@ open class UIInspector: UIView {
 	}
 
 	@available(*, unavailable)
-	required public init?(coder: NSCoder) {
+	public required init?(coder: NSCoder) {
 		fatalError("init(coder:) has not been implemented")
 	}
 
@@ -289,9 +291,9 @@ open class UIInspector: UIView {
 			rectsBySource[view]?.unhighlight()
 			inspector3D.viewNodesBySource[view]?.unhighlight()
 		} else {
-			highlightedViews.keys.forEach {
-				rectsBySource[$0]?.unhighlight()
-				inspector3D.viewNodesBySource[$0]?.unhighlight()
+			for key in highlightedViews.keys {
+				rectsBySource[key]?.unhighlight()
+				inspector3D.viewNodesBySource[key]?.unhighlight()
 			}
 			highlightedViews.removeAll()
 		}
@@ -331,7 +333,6 @@ private extension UIInspector {
 
 	func _update(reset: Bool) {
 		guard let targetView, window != nil else { return }
-		var targetSnapshot: UIViewSnapshot?
 		if reset {
 			feedback.selectionChanged()
 			scroll.zoomScale = 1
@@ -341,6 +342,8 @@ private extension UIInspector {
 			inspector3D.frame = bounds
 		}
 
+		targetSnapshot = nil
+		groupedViews.removeAll()
 		rects.removeAll()
 		rectsBySource.removeAll()
 		container.subviews.forEach { $0.removeFromSuperview() }
@@ -351,7 +354,7 @@ private extension UIInspector {
 		snapshot.frame = frame
 		container.addSubview(snapshot)
 
-		let groupped = targetView.selfAndAllVisibleSubviewsLayers
+		groupedViews = targetView.selfAndAllVisibleSubviewsLayers
 			.map {
 				$0.filter { insideRect($0) && !$0.needIgnoreInInspector }
 					.map { UIViewSnapshot($0) }
@@ -359,7 +362,7 @@ private extension UIInspector {
 			.filter {
 				!$0.isEmpty
 			}
-		for (_, layer) in groupped.enumerated() {
+		for (_, layer) in groupedViews.enumerated() {
 			for snapshot in layer {
 				let frame = container.convert(snapshot.globalRect, from: container.window)
 				let view = UIViewInspectorItem(snapshot, frame: frame)
@@ -379,11 +382,13 @@ private extension UIInspector {
 			drawEdges()
 		}
 
-		inspector3D.update(
-			targetView: targetSnapshot ?? UIViewSnapshot(targetView),
-			groupedViews: groupped,
-			in: inspectTargetRect
-		)
+		if show3DView {
+			inspector3D.update(
+				targetView: targetSnapshot ?? UIViewSnapshot(targetView),
+				groupedViews: groupedViews,
+				in: inspectTargetRect
+			)
+		}
 
 		if showUpdateAnimation, reset {
 			DispatchQueue.main.async { [self] in
@@ -407,19 +412,25 @@ private extension UIInspector {
 
 private extension UIInspector {
 
-	func showInspector3D() {
+	func zoomAndShowInspector3D() {
 		if scroll.zoomScale > 1 {
 			UIView.animate(withDuration: 0.2) { [self] in
 				scroll.zoomScale = 1
 			} completion: { [self] _ in
-				showInspector3DWithoutAnimation()
+				showInspector3D()
 			}
 		} else {
-			showInspector3DWithoutAnimation()
+			showInspector3D()
 		}
 	}
 
-	func showInspector3DWithoutAnimation() {
+	func showInspector3D() {
+		guard let targetSnapshot else { return }
+		inspector3D.update(
+			targetView: targetSnapshot,
+			groupedViews: groupedViews,
+			in: inspectTargetRect
+		)
 		inspector3D.showAppearAnimation { [self] in
 			for (view, color) in highlightedViews {
 				inspector3D.viewNodesBySource[view]?.highlight(with: color)
@@ -666,7 +677,7 @@ extension UIInspector: UIGestureRecognizerDelegate {
 }
 
 private extension UIInspector {
-	
+
 	var selectionColor: UIColor {
 		tintColor.withAlphaComponent(0.5)
 	}
@@ -858,7 +869,7 @@ private extension UIInspector {
 				self?.show3DView.toggle()
 			},
 		]
-#if targetEnvironment(simulator)
+		#if targetEnvironment(simulator)
 		buttons.append(
 			UIInspectorButton(
 				icon: UIImage(systemName: "arrow.up.left.and.down.right.magnifyingglass"),
@@ -867,7 +878,7 @@ private extension UIInspector {
 				self?.isMagnificationEnabled.toggle()
 			}
 		)
-#endif
+		#endif
 		buttons += [
 			UIInspectorButton(
 				selectedIcon: UIImage(systemName: "eyedropper.full"),
