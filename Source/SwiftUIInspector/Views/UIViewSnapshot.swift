@@ -1,6 +1,6 @@
 import UIKit
 
-struct UIViewSnapshot: Identifiable {
+final class UIViewSnapshot: Identifiable {
 	
 	var id: ObjectIdentifier {
 		ObjectIdentifier(source)
@@ -16,7 +16,9 @@ struct UIViewSnapshot: Identifiable {
 	}
 	let globalRect: CGRect
 	
-	init(_ source: UIView) {
+	init(
+		_ source: UIView
+	) {
 		self.source = source
 		self.ancestors = Array(source.ancestors.dropFirst())
 		self.info = (source as? UIInspectorInfoConvertable)?.inspectorInfo ?? source.defaultInspectorInfo

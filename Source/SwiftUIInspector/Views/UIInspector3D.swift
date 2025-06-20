@@ -11,7 +11,7 @@ final class UIInspector3D: UIView {
 	private(set) var viewNodes: [SCNViewRect] = []
 	private(set) var viewNodesBySource: [UIView: SCNViewRect] = [:]
 	private var borderOverlayNodes: Set<SCNNode> = []
-	var notifyViewSelected: (any UIInspectorItem, [any UIInspectorItem]) -> Void = { _, _ in }
+	var notifyViewSelected: (any UIInspectorItem) -> Void = { _ in }
 
 	// Animation properties
 	private let initialCameraDistance: Float = 1500
@@ -98,6 +98,10 @@ final class UIInspector3D: UIView {
 				}
 			}
 			i += views.count
+		}
+		for node in viewNodes {
+			node.parentItem = node.snapshot.source.superview.flatMap { viewNodesBySource[$0] }
+			node.children = node.snapshot.source.subviews.compactMap { viewNodesBySource[$0] }
 		}
 	}
 
@@ -378,16 +382,9 @@ final class UIInspector3D: UIView {
 		guard let node = convertTapToTargetView(location)?.result.node as? SCNViewRect, gesture.state == .ended else {
 			return
 		}
-
-		let dict = viewNodes.reduce(into: [UIView: any UIInspectorItem]()) { result, view in
-			result[view.snapshot.source] = view
-		}
 	
 		// Find corresponding UIView
-		notifyViewSelected(
-			node,
-			node.snapshot.ancestors.compactMap { dict[$0] }
-		)
+		notifyViewSelected(node)
 	}
 
 	@objc func handlePan(_ gesture: UIPanGestureRecognizer) {

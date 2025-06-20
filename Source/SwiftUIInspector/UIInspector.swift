@@ -214,8 +214,8 @@ open class UIInspector: UIView {
 		addSubview(edgesContainer)
 		addSubview(inspector3D)
 		inspector3D.isHidden = true
-		inspector3D.notifyViewSelected = { [weak self] view, parents in
-			self?.didTap(on: view, underlying: parents, underlyingType: .hierarchy)
+		inspector3D.notifyViewSelected = { [weak self] view in
+			self?.didTap(on: view, underlying: nil, underlyingType: .hierarchy)
 		}
 
 		animationView.backgroundColor = .white
@@ -354,27 +354,34 @@ private extension UIInspector {
 		snapshot.frame = frame
 		container.addSubview(snapshot)
 
+		var items: [UIView: UIViewInspectorItem] = [:]
 		groupedViews = targetView.selfAndAllVisibleSubviewsLayers
 			.map {
 				$0.filter { insideRect($0) && !$0.needIgnoreInInspector }
-					.map { UIViewSnapshot($0) }
+					.map { view in
+						let snapshot = UIViewSnapshot(view)
+						if view === targetView {
+							targetSnapshot = snapshot
+						}
+						let frame = container.convert(snapshot.globalRect, from: container.window)
+						let item = UIViewInspectorItem(snapshot, frame: frame)
+						item.highlightColor = tintColor.withAlphaComponent(UIInspector.highlightAlpha)
+						let tapGesture = JustTapGesture(target: self, action: #selector(handleTap(_:)))
+						item.addGestureRecognizer(tapGesture)
+						container.addSubview(item)
+						rects.append(item)
+						rectsBySource[snapshot.source] = item
+						items[view] = item
+						return snapshot
+					}
 			}
 			.filter {
 				!$0.isEmpty
 			}
 		for (_, layer) in groupedViews.enumerated() {
 			for snapshot in layer {
-				let frame = container.convert(snapshot.globalRect, from: container.window)
-				let view = UIViewInspectorItem(snapshot, frame: frame)
-				view.highlightColor = tintColor.withAlphaComponent(UIInspector.highlightAlpha)
-				let tapGesture = JustTapGesture(target: self, action: #selector(handleTap(_:)))
-				view.addGestureRecognizer(tapGesture)
-				container.addSubview(view)
-				rects.append(view)
-				rectsBySource[snapshot.source] = view
-				if snapshot.source === targetView {
-					targetSnapshot = snapshot
-				}
+				items[snapshot.source]?.parentItem = snapshot.source.superview.flatMap { items[$0] }
+				items[snapshot.source]?.children = snapshot.source.subviews.compactMap { items[$0] }
 			}
 		}
 		updateEdges()
@@ -615,7 +622,7 @@ private extension UIInspector {
 
 	private func didTap(
 		on rect: any UIInspectorItem,
-		underlying: [any UIInspectorItem],
+		underlying: [any UIInspectorItem]?,
 		underlyingType: Info.UnderlyingType
 	) {
 		guard let controller else { return }
@@ -624,7 +631,6 @@ private extension UIInspector {
 			rootView: Info(
 				view: rect,
 				underlying: underlying,
-				underlyingType: underlyingType,
 				custom: customInfoView
 			) { [weak self] in
 				self?.selectedRect = $0

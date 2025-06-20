@@ -1,10 +1,12 @@
 import UIKit
 
-protocol UIInspectorItem: Hashable {
+protocol UIInspectorItem: Hashable, AnyObject {
 
 	var snapshot: UIViewSnapshot { get }
+	var parentItem: (any UIInspectorItem)? { get set }
+	var children: [any UIInspectorItem] { get set }
 	var isHighlighted: Bool { get }
-	var highlightColor: UIColor { get nonmutating set }
+	var highlightColor: UIColor { get set }
 	func highlight()
 	func unhighlight()
 }
@@ -15,10 +17,16 @@ extension UIInspectorItem {
 		highlightColor = color
 		highlight()
 	}
+
+	var parents: [any UIInspectorItem] {
+		parentItem.flatMap { [$0] + $0.parents } ?? []
+	}
 }
 
 final class UIViewInspectorItem: UIView, UIInspectorItem {
-	
+
+	weak var parentItem: (any UIInspectorItem)?
+	var children: [any UIInspectorItem] = []
 	let snapshot: UIViewSnapshot
 	var isHighlighted = false
 	var highlightColor: UIColor = UIInspector.tintColor.withAlphaComponent(UIInspector.highlightAlpha)

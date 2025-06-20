@@ -7,6 +7,8 @@ final class SCNViewRect: SCNNode, Identifiable, UIInspectorItem {
 		snapshot.id
 	}
 
+	weak var parentItem: (any UIInspectorItem)?
+	var children: [any UIInspectorItem] = []
 	var overlayNode: SCNNode?
 	let snapshot: UIViewSnapshot
 	var isHighlighted = false

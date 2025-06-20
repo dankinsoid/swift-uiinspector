@@ -4,9 +4,8 @@ extension UIInspector {
 
 	struct Info: View {
 
-		let underlyingType: UnderlyingType
 		let view: any UIInspectorItem
-		let underlying: [any UIInspectorItem]
+		let underlying: [any UIInspectorItem]?
 		let custom: (UIView) -> AnyView
 		let onSelect: (any UIInspectorItem) -> Void
 		@State private var selected: any UIInspectorItem
@@ -15,40 +14,36 @@ extension UIInspector {
 	
 		init(
 			view: any UIInspectorItem,
-			underlying: [any UIInspectorItem],
-			underlyingType: UnderlyingType,
+			underlying: [any UIInspectorItem]?,
 			custom: @escaping (UIView) -> AnyView,
 			onSelect: @escaping (any UIInspectorItem) -> Void
 		) {
 			self.view = view
 			self.underlying = underlying
-			self.underlyingType = underlyingType
 			self.custom = custom
 			self.onSelect = onSelect
 			_selected = State(initialValue: view)
 		}
 	
 		var selectedView: UIViewSnapshot {
-			([view] + underlying).first(where: { $0.snapshot.id == selected.snapshot.id })?.snapshot ?? view.snapshot
+			selected.snapshot
 		}
-		
+
 		var info: [UIInspector.Section] {
 			selectedView.info
 		}
 
 		var body: some View {
-			let info = info
 			NavigationView {
 				VStack(spacing: 0) {
 					List {
-						if !underlying.isEmpty {
-							SwiftUI.Section {
-								hierarchy
-									.listRowInsets(EdgeInsets())
-							} header: {
-								Text(underlyingType.rawValue)
-							}
+						if let underlying, !underlying.isEmpty {
+							list("All views at this point", [view] + underlying)
 						}
+						if selected.parentItem != nil {
+							list("Superviews", [selected] + selected.parents)
+						}
+						list("Subviews", selected.children)
 						ForEach(Array(info.enumerated()), id: \.offset) { _, section in
 							SwiftUI.Section {
 								ForEach(Array(section.cells.enumerated()), id: \.offset) { _, cell in
@@ -56,12 +51,13 @@ extension UIInspector {
 										Text(cell.title)
 											.lineLimit(1)
 										Text(text(for: cell.value))
-											.lineLimit(3)
+											.lineLimit(5)
 											.multilineTextAlignment(.trailing)
 											.selectableText()
 											.frame(maxWidth: .infinity, alignment: .trailing)
 											.opacity(0.5)
 									}
+									.padding(.vertical, 13)
 									.listRowInsets(EdgeInsets(top: 0, leading: padding, bottom: 0, trailing: padding))
 								}
 							} header: {
@@ -75,6 +71,7 @@ extension UIInspector {
 				.navigationBarTitle("")
 				.navigationBarHidden(true)
 			}
+			.animation(.easeInOut(duration: 0.15), value: selected.snapshot.id)
 		}
 		
 		@ViewBuilder
@@ -85,38 +82,56 @@ extension UIInspector {
 		}
 		
 		@ViewBuilder
-		var hierarchy: some View {
-			ScrollView(.horizontal, showsIndicators: false) {
-				HStack(spacing: 0) {
-					ForEach([view] + underlying, id: \.snapshot.id) { view in
-						Button {
-							selected.unhighlight()
-							selected = view
-							selected.highlight()
-							onSelect(view)
-						} label: {
-							title(for: view.snapshot.source)
-								.font(.subheadline)
-								.foregroundColor(view.snapshot.id == selected.snapshot.id ? .primary : .secondary)
-								.frame(maxHeight: .infinity)
-								.padding(.horizontal, padding)
-								.background(
-									Group {
-										if view.snapshot.id == selected.snapshot.id {
-											RoundedRectangle(cornerRadius: 8)
-												.fill(Color.primary.opacity(0.2))
-										}
-									}
-								)
-								.lineLimit(1)
-						}
-						if view.snapshot.id != underlying.last?.snapshot.id {
-							Divider()
-								.foregroundColor(.secondary)
-								.padding(.vertical, smallPadding)
+		func list(_ title: String, _ list: [any UIInspectorItem]) -> some View {
+			if !list.isEmpty {
+				SwiftUI.Section {
+					ScrollView(.horizontal, showsIndicators: false) {
+						HStack(spacing: 0) {
+							ForEach(list, id: \.snapshot.id) { view in
+								Button {
+									selected.unhighlight()
+									selected = view
+									selected.highlight()
+									onSelect(view)
+								} label: {
+									self.title(for: view.snapshot.source)
+								}
+								.buttonStyle(ItemButton(isSelected: view.snapshot.id == selected.snapshot.id, padding: padding))
+								if view.snapshot.id != list.last?.snapshot.id {
+									Divider()
+										.foregroundColor(.secondary)
+										.padding(.vertical, smallPadding)
+								}
+							}
 						}
 					}
+					.listRowInsets(EdgeInsets())
+				} header: {
+					Text(title)
 				}
+			}
+		}
+
+		struct ItemButton: ButtonStyle {
+			
+			let isSelected: Bool
+			let padding: CGFloat
+			
+			func makeBody(configuration: Configuration) -> some View {
+				configuration.label
+					.font(.subheadline)
+					.frame(maxHeight: .infinity)
+					.padding(.horizontal, padding)
+					.lineLimit(1)
+					.foregroundColor(isSelected ? .primary : .secondary)
+					.background(
+						Group {
+							if isSelected || configuration.isPressed {
+								RoundedRectangle(cornerRadius: 8)
+									.fill(Color.primary.opacity(0.2))
+							}
+						}
+					)
 			}
 		}
 
